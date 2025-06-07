@@ -46,6 +46,10 @@ public class Reservation {
     private Double engineCapacity;  // Pojemność silnika
     private String cabType;         // Typ kabiny
 
+    // --- Wybór kalendarza i godziny wizyty
+    private String visitDate; // np. "2025-06-10"
+    private String visitTime; // np. "13:30"
+
     // --- Konstruktory ---
 
     public Reservation() {
@@ -187,4 +191,8 @@ public class Reservation {
     public void setCabType(String cabType) {
         this.cabType = cabType;
     }
+    public String getVisitDate() { return visitDate; }
+    public void setVisitDate(String visitDate) { this.visitDate = visitDate; }
+    public String getVisitTime() { return visitTime; }
+    public void setVisitTime(String visitTime) { this.visitTime = visitTime; }
 }

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Admina – Rezerwacje Warsztat</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #eef3f6; }
+        h1 { color: #174b36; }
+        .rezerwacje { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px #0001; }
+        button { margin: 0 5px; }
+        ul { padding-left: 20px; }
+        .msg { color: #197b30; margin: 16px 0; font-weight: bold;}
+        .error { color: #c00; }
+    </style>
+</head>
+<body>
+<h1>Panel admina – wszystkie rezerwacje</h1>
+<button onclick="fetchReservations()">Odśwież</button>
+<div class="msg" id="msg"></div>
+<ul id="reservationList"></ul>
+<script>
+    async function fetchReservations() {
+        const res = await fetch('/api/reservations');
+        if (!res.ok) {
+            document.getElementById('msg').textContent = 'Błąd pobierania rezerwacji';
+            document.getElementById('msg').classList.add('error');
+            return;
+        }
+        const reservations = await res.json();
+        if(reservations.length === 0) {
+            reservationList.innerHTML = "<li>Brak rezerwacji.</li>";
+            return;
+        }
+        reservationList.innerHTML = reservations.map(r =>
+            `<li>
+      <b>${r.firstName} ${r.lastName}</b> (${r.email}, ${r.phoneNumber})
+      <br>Pojazd: ${r.carBrand} ${r.carModel}
+      <br>Usługa: ${r.serviceType} | Notatka: ${r.notes || '-'}
+      <br>
+      <button onclick="deleteReservation(${r.id})">Usuń</button>
+    </li>`
+        ).join('');
+    }
+
+    async function deleteReservation(id) {
+        if(!confirm("Na pewno usunąć tę rezerwację?")) return;
+        const res = await fetch('/api/reservations/' + id, { method: 'DELETE' });
+        if(res.ok) {
+            document.getElementById('msg').textContent = 'Usunięto!';
+            fetchReservations();
+        } else {
+            document.getElementById('msg').textContent = 'Błąd usuwania!';
+            document.getElementById('msg').classList.add('error');
+        }
+    }
+    fetchReservations();
+</script>
+</body>
+</html>
