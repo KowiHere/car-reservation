@@ -1,24 +1,24 @@
-package com.crp.warsztat.controller;
-
 import com.crp.warsztat.dto.ReservationCalendarDTO;
 import com.crp.warsztat.model.Reservation;
 import com.crp.warsztat.repository.ReservationRepository;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Map;
+
 import java.time.LocalTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 
 
 @RestController
 @RequestMapping("/api/reservations")
-public class ReservationApiController {
+public class reservationApiController {
 
     private final ReservationRepository reservationRepository;
 
-    public ReservationApiController(ReservationRepository reservationRepository) {
+    public reservationApiController(ReservationRepository reservationRepository) {
         this.reservationRepository = reservationRepository;
     }
 
@@ -54,10 +54,10 @@ public class ReservationApiController {
                         res.getVisitTime()
                 ))
                 .toList();
-
     }
+
     @GetMapping("/calendar/fullcalendar")
-    public List<Map<@org.jetbrains.annotations.NotNull String, @org.jetbrains.annotations.NotNull String>> getFullcalendarEvents() {
+    public List<Map<String, String>> getFullcalendarEvents() {
         return reservationRepository.findAll().stream()
                 .map(res -> Map.of(
                         "title", "Zajęte",
@@ -67,10 +67,11 @@ public class ReservationApiController {
                 ))
                 .toList();
     }
-
     private String endTime(String startTime) {
         LocalTime start = LocalTime.parse(startTime);
         return start.plusHours(1).toString();
     }
+}
 
+public void main() {
 }

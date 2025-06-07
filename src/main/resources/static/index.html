@@ -9,29 +9,33 @@
         form, .rezerwacje { background: #fff; padding: 18px; border-radius: 10px; box-shadow: 0 2px 8px #0001; margin-bottom: 32px; }
         label { display: block; margin: 10px 0 4px; }
         input, select { padding: 6px; width: 100%; max-width: 360px; border-radius: 6px; border: 1px solid #aaa; }
+        textarea { width: 100%; border-radius: 6px; border: 1px solid #aaa; padding: 6px; }
         button { margin-top: 18px; padding: 10px 18px; border-radius: 6px; border: none; background: #214e34; color: #fff; font-weight: bold; cursor: pointer;}
         .msg { margin: 12px 0; color: #197b30; font-weight: bold;}
         ul { padding-left: 18px; }
+        #calendar { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px #0001; }
     </style>
+    <!-- FullCalendar CSS -->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/main.min.js"></script>
 </head>
 <body>
 <h1>Rezerwacja wizyty w warsztacie</h1>
 <form id="rezerwacjaForm">
-    <label>Imię:</label>
-    <label for="firstName"></label><input type="text" id="firstName" required>
-    <label>Nazwisko:</label>
-    <label for="lastName"></label><input type="text" id="lastName" required>
-    <label>Email:</label>
-    <label for="email"></label><input type="email" id="email" required>
-    <label>Telefon:</label>
-    <label for="phoneNumber"></label><input type="text" id="phoneNumber" required>
-    <label>Marka pojazdu:</label>
-    <label for="carBrand"></label><input type="text" id="carBrand">
-    <label>Model pojazdu:</label>
-    <label for="carModel"></label><input type="text" id="carModel">
-    <label>Typ usługi:</label>
-    <label for="serviceType"></label><select id="serviceType" required>
+    <label for="firstName">Imię:</label>
+    <input type="text" id="firstName" required>
+    <label for="lastName">Nazwisko:</label>
+    <input type="text" id="lastName" required>
+    <label for="email">Email:</label>
+    <input type="email" id="email" required>
+    <label for="phoneNumber">Telefon:</label>
+    <input type="text" id="phoneNumber" required>
+    <label for="carBrand">Marka pojazdu:</label>
+    <input type="text" id="carBrand">
+    <label for="carModel">Model pojazdu:</label>
+    <input type="text" id="carModel">
+    <label for="serviceType">Typ usługi:</label>
+    <select id="serviceType" required>
         <option value="">-- Wybierz --</option>
         <option value="PRZEGLAD">Przegląd</option>
         <option value="NAPRAWA">Naprawa</option>
@@ -39,12 +43,12 @@
         <option value="DIAGNOSTYKA">Diagnostyka</option>
         <option value="MONTAZ_AKCESORIOW">Montaż akcesoriów</option>
     </select>
-    <label>Data wizyty:</label>
-    <label for="visitDate"></label><input type="date" id="visitDate" required>
-    <label>Godzina wizyty:</label>
-    <label for="visitTime"></label><input type="time" id="visitTime" required>
+    <label for="visitDate">Data wizyty:</label>
+    <input type="date" id="visitDate" required>
+    <label for="visitTime">Godzina wizyty:</label>
+    <input type="time" id="visitTime" required>
     <label for="notes">Notatka (opcjonalnie):</label>
-    <textarea id="notes" name="notes" rows="5" style="width:100%; resize:vertical;"></textarea>
+    <textarea id="notes" name="notes" rows="5" style="resize:vertical;"></textarea>
 
     <div class="msg" id="msg"></div>
     <button type="submit" style="margin-top:10px;">Wyślij rezerwację</button>
@@ -55,8 +59,10 @@
     <button onclick="fetchReservations()">Odśwież listę</button>
     <ul id="reservationList"></ul>
 </div>
+
 <div id="calendar"></div>
 
+<!-- FullCalendar JS -->
 <script>
     document.getElementById('rezerwacjaForm').onsubmit = async function (e) {
         e.preventDefault();
@@ -106,26 +112,25 @@
 
     // Automatycznie pobierz rezerwacje przy starcie strony
     fetchReservations();
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/main.min.js"></script>
-<script>
+
+    // FullCalendar
     document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('calendar');
         var calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'timeGridWeek',      // Widok tygodniowy z podziałem na godziny
-            slotMinTime: "08:00:00",          // Godzina startu dnia
-            slotMaxTime: "16:00:00",          // Godzina końca dnia
+            initialView: 'timeGridWeek',
+            slotMinTime: "08:00:00",
+            slotMaxTime: "16:00:00",
             allDaySlot: false,
-            locale: 'pl',                     // Polski język kalendarza
-            selectable: true,                 // Umożliwia wybieranie wolnych slotów
+            locale: 'pl',
+            selectable: true,
             select: function(info) {
-                // info.startStr, info.endStr - wybrany termin
                 alert('Wybrałeś termin: ' + info.startStr);
-                // Tu można dodać pokazanie formularza rezerwacji!
+                // Tu możesz otworzyć okno/formularz rezerwacji!
             },
-            events: '/reservations/calendar/fullcalendar' // Pobieranie zajętych terminów z backendu
+            events: '/api/reservations/calendar/fullcalendar'
         });
         calendar.render();
-    });</script>
+    });
 </script>
 </body>
 </html>
