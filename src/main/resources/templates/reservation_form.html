@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="pl">
+<head>
+    <title>Nowa rezerwacja</title>
+</head>
+<body>
+<h2>Zarezerwuj wizytę w warsztacie</h2>
+<form th:action="@{/reservations}" method="post">
+    <label>
+        <input type="text" name="firstName" placeholder="Imię" required>
+    </label><br>
+    <label>
+        <input type="text" name="lastName" placeholder="Nazwisko" required>
+    </label><br>
+    <label>
+        <input type="email" name="email" placeholder="E-mail" required>
+    </label><br>
+    <label>
+        <input type="text" name="phoneNumber" placeholder="Telefon" required>
+    </label><br>
+    <label>
+        <input type="text" name="carBrand" placeholder="Marka auta" required>
+    </label><br>
+    <label>
+        <input type="text" name="carModel" placeholder="Model auta" required>
+    </label><br>
+    <label>
+        <select name="serviceTypeId" required>
+            <option th:each="service : ${serviceTypes}" th:value="${service.id}" th:text="${service.name}"></option>
+        </select>
+    </label><br>
+    <label>
+        <input type="datetime-local" name="reservationDate" required>
+    </label><br>
+    <button type="submit">Wyślij rezerwację</button>
+</form>
+<div th:if="${msg}" style="color:green;">[[${msg}]]</div>
+</body>
+</html>

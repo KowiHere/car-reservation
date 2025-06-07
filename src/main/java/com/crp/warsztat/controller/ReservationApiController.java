@@ -7,39 +7,35 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Kontroler do obsługi rezerwacji (Reservation).
- * Pozwala pobierać, dodawać i usuwać rezerwacje przez REST API.
- */
 @RestController
-@RequestMapping("/reservations")
-public class ReservationController {
+@RequestMapping("/api/reservations")
+public class ReservationApiController {
 
     private final ReservationRepository reservationRepository;
 
-    public ReservationController(ReservationRepository reservationRepository) {
+    public ReservationApiController(ReservationRepository reservationRepository) {
         this.reservationRepository = reservationRepository;
     }
 
-    // Pobierz wszystkie rezerwacje (GET /reservations)
+    // GET /api/reservations
     @GetMapping
     public List<Reservation> getAllReservations() {
         return reservationRepository.findAll();
     }
 
-    // Pobierz rezerwację po ID (GET /reservations/{id})
+    // GET /api/reservations/{id}
     @GetMapping("/{id}")
     public Optional<Reservation> getReservationById(@PathVariable Long id) {
         return reservationRepository.findById(id);
     }
 
-    // Dodaj nową rezerwację (POST /reservations)
+    // POST /api/reservations
     @PostMapping
     public Reservation createReservation(@RequestBody Reservation reservation) {
         return reservationRepository.save(reservation);
     }
 
-    // Usuń rezerwację (DELETE /reservations/{id})
+    // DELETE /api/reservations/{id}
     @DeleteMapping("/{id}")
     public void deleteReservation(@PathVariable Long id) {
         reservationRepository.deleteById(id);

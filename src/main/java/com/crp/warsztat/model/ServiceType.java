@@ -24,7 +24,7 @@ public class ServiceType {
 
     // --- Konstruktory ---
 
-    public ServiceType() {
+    public ServiceType(String naprawaBlacharska, double v) {
         // Bezparametrowy konstruktor wymagany przez JPA
     }
 
@@ -33,6 +33,10 @@ public class ServiceType {
         this.description = description;
         this.durationMinutes = durationMinutes;
         this.category = category;
+    }
+
+    public ServiceType() {
+
     }
 
     // --- Gettery i settery ---

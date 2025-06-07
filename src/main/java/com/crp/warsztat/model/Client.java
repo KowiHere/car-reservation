@@ -30,14 +30,6 @@ public class Client {
         // Bezparametrowy konstruktor wymagany przez JPA
     }
 
-    public Client(String name, String email, String phone, boolean wantsNotifications, String internalNotes) {
-        this.name = name;
-        this.email = email;
-        this.phone = phone;
-        this.wantsNotifications = wantsNotifications;
-        this.internalNotes = internalNotes;
-    }
-
     // --- Gettery i settery (potrzebne do odczytu/zapisu pól) ---
 
     public Long getId() {
@@ -82,5 +74,8 @@ public class Client {
 
     public void setInternalNotes(String internalNotes) {
         this.internalNotes = internalNotes;
+    }
+
+    public void setFirstName(String s) {
     }
 }
