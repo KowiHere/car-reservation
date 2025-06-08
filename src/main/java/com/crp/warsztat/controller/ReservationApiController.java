@@ -1,9 +1,9 @@
+package com.crp.warsztat.controller;
+
 import com.crp.warsztat.dto.ReservationCalendarDTO;
 import com.crp.warsztat.model.Reservation;
 import com.crp.warsztat.repository.ReservationRepository;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.bind.annotation.RestController;
-
 
 import java.time.LocalTime;
 import java.util.List;
@@ -14,11 +14,11 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/reservations")
-public class reservationApiController {
+public class ReservationApiController {
 
     private final ReservationRepository reservationRepository;
 
-    public reservationApiController(ReservationRepository reservationRepository) {
+    public ReservationApiController(ReservationRepository reservationRepository) {
         this.reservationRepository = reservationRepository;
     }
 
@@ -71,7 +71,4 @@ public class reservationApiController {
         LocalTime start = LocalTime.parse(startTime);
         return start.plusHours(1).toString();
     }
-}
-
-public void main() {
 }
