@@ -1,40 +1,43 @@
+/* === Globalny styl tła i tekstu === */
 body {
     font-family: Arial, sans-serif;
     margin: 40px;
     background: #171717;
     color: #fff;
 }
-h1 {
-    color: #ff6600;
-}
-label, h2 {
-    color: orange;
-}
+
+/* === Nagłówki === */
+h1, h2 { color: #ff6600; }
+label { color: orange; }
+
+/* === FLEX – Ustawienia paneli obok siebie === */
 .flexbox {
     display: flex;
     align-items: stretch;
     gap: 32px;
     min-height: 800px;
 }
+
+/* === Formularz klienta i kontener kalendarza === */
 #rezerwacjaForm, #calendar-container {
     background: #212121;
     padding: 24px 18px;
     border-radius: 12px;
     box-shadow: 0 2px 16px #0005;
-    flex: 0 0 340px;
-    min-width: 280px;
     display: flex;
     flex-direction: column;
+    min-width: 320px;
 }
+#rezerwacjaForm { flex: 0 0 340px; }
 #calendar-container {
     flex: 1 1 auto;
     min-width: 650px;
     height: 100%;
-    display: flex;
-    flex-direction: column;
     justify-content: stretch;
     align-items: stretch;
 }
+
+/* === Pola formularza === */
 input, select, textarea {
     background: #131313;
     color: #fff;
@@ -43,6 +46,8 @@ input, select, textarea {
     padding: 7px;
     margin-bottom: 10px;
 }
+
+/* === Przyciski === */
 button {
     padding: 12px 20px;
     border-radius: 6px;
@@ -57,8 +62,11 @@ button {
 button:hover {
     background: #cc6611;
 }
-.msg { margin: 12px 0; color: #ffe135; font-weight: bold;}
-/* FullCalendar stylizacja */
+
+/* === Komunikaty === */
+.msg { margin: 12px 0; color: #ffe135; font-weight: bold; }
+
+/* === FullCalendar === */
 #calendar {
     background: #181818;
     border-radius: 10px;
@@ -67,16 +75,11 @@ button:hover {
     min-height: 500px;
     color: #fff;
 }
-/* Pionowe linie i separatory */
-.fc-theme-standard .fc-scrollgrid {
-    border: 1px solid #333;
-}
+/* Linie i separatory tabeli kalendarza */
+.fc-theme-standard .fc-scrollgrid { border: 1px solid #333; }
 .fc-theme-standard td, .fc-theme-standard th {
     border-right: 1px solid #ff8400;
     border-bottom: 1px solid #444;
-    background: #1a1a1a;
-}
-.fc-timegrid-slot {
     background: #1a1a1a;
 }
 .fc-theme-standard .fc-col-header-cell-cushion,
@@ -84,22 +87,95 @@ button:hover {
     color: orange;
     font-weight: bold;
 }
-/* Styl slotów */
-.fc .fc-timegrid-slot {
-    border-bottom: 1px solid #353535;
-}
-/* Kolor slotów zarezerwowanych */
+.fc .fc-timegrid-slot { border-bottom: 1px solid #353535; }
+
+/* Zajęte terminy */
 .fc-event, .fc-event-dot {
     background: #dd6600 !important;
     border: none !important;
     color: #1a1a1a !important;
 }
+
 /* Responsywność */
 @media (max-width: 1100px) {
-    .flexbox {
-        flex-direction: column;
-    }
-    #calendar-container {
-        min-width: 0;
-    }
+    .flexbox { flex-direction: column; }
+    #calendar-container { min-width: 0; }
+}
+
+/* === Panel admina (dodatkowo) === */
+.admin-panel {
+    background: #232323;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px #0005;
+}
+.admin-panel h1 { color: #ff6600; }
+.admin-panel .msg { color: #ffe135; }
+.admin-panel button {
+    background: #ff8400;
+    color: #fff;
+    margin: 0 5px;
+    transition: background .15s;
+}
+.admin-panel button:hover { background: #cc6611; }
+
+/* Styl dla linków w navbarze */
+.navbar {
+    margin-bottom: 32px;
+}
+.navbar ul {
+    list-style: none;
+    display: flex;
+    gap: 32px;
+    margin: 0;
+    padding: 0;
+}
+.navbar a {
+    color: orange;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.18rem;
+    transition: color 0.2s;
+}
+.navbar a:hover {
+    color: #fff;
+}
+
+/* Przycisk pomarańczowy */
+button, .btn-orange {
+    padding: 10px 18px;
+    border-radius: 6px;
+    border: none;
+    background: #ff8400;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 8px;
+    margin-right: 8px;
+    transition: background 0.15s;
+}
+button:hover, .btn-orange:hover {
+    background: #cc6611;
+}
+
+/* Panel admina */
+.rezerwacje {
+    background: #191919;
+    color: #fff;
+}
+.filterbar input, .filterbar select {
+    background: #181818;
+    color: #fff;
+    border-radius: 6px;
+    border: 1px solid #ff8400;
+    padding: 7px;
+    margin-right: 8px;
+}
+ul#reservationList {
+    margin-top: 24px;
+}
+ul#reservationList li {
+    margin-bottom: 22px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #333;
 }

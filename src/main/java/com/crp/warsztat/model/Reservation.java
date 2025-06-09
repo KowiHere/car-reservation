@@ -1,198 +1,80 @@
 package com.crp.warsztat.model;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
-import java.util.List;
 
-/**
- * Klasa Reservation (Rezerwacja)
- * Reprezentuje pojedynczą rezerwację klienta na wybrane usługi, w wybranym terminie.
- * Zawiera też dane pojazdu oraz notatki.
- */
 @Entity
 public class Reservation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;  // Unikalny numer rezerwacji
+    private Long id;
 
-    // Powiązanie z klientem (wielu rezerwacji może mieć jeden klient)
-    @ManyToOne
-    private Client client;
+    // --- Dane klienta (prosto z formularza) ---
+    private String firstName;
+    private String lastName;
+    private String email;
+    private String phoneNumber;
 
-    // Lista wybranych usług w ramach tej rezerwacji
-    @ManyToMany
-    private List<ServiceType> serviceTypes;
+    // --- Dane pojazdu ---
+    private String carBrand;
+    private String carModel;
 
-    private LocalDateTime startDateTime; // Data i godzina rozpoczęcia
-    private LocalDateTime endDateTime;   // Data i godzina zakończenia
+    // --- Usługa (jeśli na razie tylko jeden typ na rezerwację) ---
+    private String serviceType;
 
-    // Status rezerwacji: PENDING, ACCEPTED, REJECTED, CANCELLED
+    // --- Termin wizyty ---
+    private String visitDate; // np. "2025-06-08"
+    private String visitTime; // np. "08:30"
+
+    // --- Dodatkowe informacje ---
+    private String clientNotes;   // Notatka od klienta (z formularza)
+    private String adminNotes;    // Notatka widoczna tylko dla admina
+
+    // --- Status rezerwacji (domyślnie PENDING) ---
     @Enumerated(EnumType.STRING)
-    private ReservationStatus status;
-
-    private LocalDateTime createdAt;      // Data utworzenia rezerwacji
-    private LocalDateTime lastModifiedAt; // Data ostatniej modyfikacji
-
-    private String clientNotes;   // Notatki klienta
-    private String adminNotes;    // Notatki wewnętrzne (dla pracowników/admina)
-
-    // --- Dane pojazdu (opcjonalne, wszystkie mogą być puste) ---
-    private String vehicleVin;      // VIN pojazdu
-    private String vehicleMake;     // Marka pojazdu
-    private String vehicleModel;    // Model pojazdu
-    private Integer vehicleYear;    // Rok produkcji
-    private String vehicleFuel;     // Typ paliwa
-    private Double engineCapacity;  // Pojemność silnika
-    private String cabType;         // Typ kabiny
-
-    // --- Wybór kalendarza i godziny wizyty
-    private String visitDate; // np. "2025-06-10"
-    private String visitTime; // np. "13:30"
+    private ReservationStatus status = ReservationStatus.PENDING;
 
     // --- Konstruktory ---
-
-    public Reservation() {
-        // Konstruktor bez parametrów – wymagany przez JPA
-    }
-
-    // Możesz dodać własny konstruktor dla wygody (opcjonalnie)
+    public Reservation() {}
 
     // --- Gettery i settery ---
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public Client getClient() {
-        return client;
-    }
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
 
-    public void setClient(Client client) {
-        this.client = client;
-    }
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
 
-    public List<ServiceType> getServiceTypes() {
-        return serviceTypes;
-    }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
-    public void setServiceTypes(List<ServiceType> serviceTypes) {
-        this.serviceTypes = serviceTypes;
-    }
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
 
-    public LocalDateTime getStartDateTime() {
-        return startDateTime;
-    }
+    public String getCarBrand() { return carBrand; }
+    public void setCarBrand(String carBrand) { this.carBrand = carBrand; }
 
-    public void setStartDateTime(LocalDateTime startDateTime) {
-        this.startDateTime = startDateTime;
-    }
+    public String getCarModel() { return carModel; }
+    public void setCarModel(String carModel) { this.carModel = carModel; }
 
-    public LocalDateTime getEndDateTime() {
-        return endDateTime;
-    }
+    public String getServiceType() { return serviceType; }
+    public void setServiceType(String serviceType) { this.serviceType = serviceType; }
 
-    public void setEndDateTime(LocalDateTime endDateTime) {
-        this.endDateTime = endDateTime;
-    }
-
-    public ReservationStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(ReservationStatus status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getLastModifiedAt() {
-        return lastModifiedAt;
-    }
-
-    public void setLastModifiedAt(LocalDateTime lastModifiedAt) {
-        this.lastModifiedAt = lastModifiedAt;
-    }
-
-    public String getClientNotes() {
-        return clientNotes;
-    }
-
-    public void setClientNotes(String clientNotes) {
-        this.clientNotes = clientNotes;
-    }
-
-    public String getAdminNotes() {
-        return adminNotes;
-    }
-
-    public void setAdminNotes(String adminNotes) {
-        this.adminNotes = adminNotes;
-    }
-
-    public String getVehicleVin() {
-        return vehicleVin;
-    }
-
-    public void setVehicleVin(String vehicleVin) {
-        this.vehicleVin = vehicleVin;
-    }
-
-    public String getVehicleMake() {
-        return vehicleMake;
-    }
-
-    public void setVehicleMake(String vehicleMake) {
-        this.vehicleMake = vehicleMake;
-    }
-
-    public String getVehicleModel() {
-        return vehicleModel;
-    }
-
-    public void setVehicleModel(String vehicleModel) {
-        this.vehicleModel = vehicleModel;
-    }
-
-    public Integer getVehicleYear() {
-        return vehicleYear;
-    }
-
-    public void setVehicleYear(Integer vehicleYear) {
-        this.vehicleYear = vehicleYear;
-    }
-
-    public String getVehicleFuel() {
-        return vehicleFuel;
-    }
-
-    public void setVehicleFuel(String vehicleFuel) {
-        this.vehicleFuel = vehicleFuel;
-    }
-
-    public Double getEngineCapacity() {
-        return engineCapacity;
-    }
-
-    public void setEngineCapacity(Double engineCapacity) {
-        this.engineCapacity = engineCapacity;
-    }
-
-    public String getCabType() {
-        return cabType;
-    }
-
-    public void setCabType(String cabType) {
-        this.cabType = cabType;
-    }
     public String getVisitDate() { return visitDate; }
     public void setVisitDate(String visitDate) { this.visitDate = visitDate; }
+
     public String getVisitTime() { return visitTime; }
     public void setVisitTime(String visitTime) { this.visitTime = visitTime; }
+
+    public String getClientNotes() { return clientNotes; }
+    public void setClientNotes(String clientNotes) { this.clientNotes = clientNotes; }
+
+    public String getAdminNotes() { return adminNotes; }
+    public void setAdminNotes(String adminNotes) { this.adminNotes = adminNotes; }
+
+    public ReservationStatus getStatus() { return status; }
+    public void setStatus(ReservationStatus status) { this.status = status; }
 }

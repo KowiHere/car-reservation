@@ -9,7 +9,16 @@
 </head>
 <body>
 <h1>Rezerwacja wizyty w warsztacie</h1>
+
+<nav class="navbar">
+    <ul>
+        <li><a href="index.html">Panel klienta</a></li>
+        <li><a href="admin.html">Panel admina</a></li>
+    </ul>
+</nav>
+
 <div class="flexbox">
+    <!-- Formularz klienta -->
     <form id="rezerwacjaForm">
         <label for="firstName">Imię:</label>
         <input type="text" id="firstName" required>
@@ -41,12 +50,15 @@
         <div class="msg" id="msg"></div>
         <button type="submit">Wyślij rezerwację</button>
     </form>
+
+    <!-- Kalendarz po prawej stronie -->
     <div id="calendar-container">
         <div id="calendar"></div>
     </div>
 </div>
 
 <script>
+    // Obsługa wysyłki formularza (AJAX, bez przeładowania strony)
     document.getElementById('rezerwacjaForm').onsubmit = async function (e) {
         e.preventDefault();
         const res = await fetch('/api/reservations', {
@@ -76,7 +88,7 @@
         }
     };
 
-    // FullCalendar obsługa
+    // Obsługa FullCalendar
     document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('calendar');
         var calendar = new FullCalendar.Calendar(calendarEl, {
@@ -86,11 +98,8 @@
             allDaySlot: false,
             locale: 'pl',
             selectable: true,
-            firstDay: 1, // Poniedziałek
+            firstDay: 1, // Poniedziałek jako pierwszy dzień tygodnia
             select: function(info) {
-                // Wyłącz alert!
-                // alert('Wybrałeś termin: ' + info.startStr);
-                // Ustaw datę i godzinę:
                 document.getElementById('visitDate').value = info.startStr.slice(0,10);
                 document.getElementById('visitTime').value = info.startStr.slice(11,16);
             },
@@ -100,7 +109,7 @@
         });
         calendar.render();
 
-        // Wyrównanie wysokości kalendarza do formularza
+        // Wyrównanie wysokości kalendarza do formularza (responsywność)
         function resizeCalendarHeight() {
             var formHeight = document.getElementById('rezerwacjaForm').offsetHeight;
             document.getElementById('calendar-container').style.height = formHeight + 'px';

@@ -3,41 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <title>Panel Admina – Rezerwacje Warsztat</title>
+    <link href="styles.css" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #eef3f6; }
-        h1 { color: #174b36; }
-        .rezerwacje { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px #0001; }
-        button { margin: 0 5px; }
-        ul { padding-left: 20px; }
-        .msg { color: #197b30; margin: 16px 0; font-weight: bold;}
-        .error { color: #c00; }
+        .modal-bg {
+            position: fixed;
+            top:0; left:0; right:0; bottom:0;
+            background:rgba(0,0,0,.6);
+            display:none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        .modal-bg.active { display:flex; }
+        .modal-content {
+            background: #222;
+            color: #fff;
+            border-radius: 10px;
+            padding: 24px;
+            min-width: 320px;
+            box-shadow: 0 2px 18px #0008;
+            position:relative;
+        }
+        .modal-content label { color: orange; }
+        .modal-content button { margin-top: 10px; }
+        .modal-close {
+            position: absolute;
+            top: 8px;
+            right: 16px;
+            color: #ff8400;
+            background: none;
+            border: none;
+            font-size: 1.7em;
+            cursor: pointer;
+        }
+        .reservation-buttons button { margin-right: 7px;}
     </style>
 </head>
 <body>
 <h1>Panel admina – wszystkie rezerwacje</h1>
-<button onclick="fetchReservations()">Odśwież</button>
+
+<nav class="navbar">
+    <ul>
+        <li><a href="index.html">Panel klienta</a></li>
+        <li><a href="admin.html">Panel admina</a></li>
+    </ul>
+</nav>
+
+<div style="margin-bottom:16px;">
+    <label for="statusFilter" style="color:orange;font-weight:bold;">Status rezerwacji:</label>
+    <select id="statusFilter">
+        <option value="">Wszystkie</option>
+        <option value="PENDING">Oczekujące (PENDING)</option>
+        <option value="ACCEPTED">Zaakceptowane (ACCEPTED)</option>
+        <option value="REJECTED">Odrzucone (REJECTED)</option>
+        <option value="CANCELLED">Anulowane (CANCELLED)</option>
+    </select>
+    <button onclick="fetchReservations()">Odśwież</button>
+</div>
 <div class="msg" id="msg"></div>
 <ul id="reservationList"></ul>
+
+<!-- MODAL edycji -->
+<div id="modal-bg" class="modal-bg">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>Edycja rezerwacji</h2>
+        <form id="editForm">
+            <input type="hidden" id="editId">
+            <label>Imię: <input type="text" id="editFirstName"></label><br>
+            <label>Nazwisko: <input type="text" id="editLastName"></label><br>
+            <label>Email: <input type="email" id="editEmail"></label><br>
+            <label>Telefon: <input type="text" id="editPhoneNumber"></label><br>
+            <label>Marka pojazdu: <input type="text" id="editCarBrand"></label><br>
+            <label>Model pojazdu: <input type="text" id="editCarModel"></label><br>
+            <label>Typ usługi: <input type="text" id="editServiceType"></label><br>
+            <label>Data wizyty: <input type="date" id="editVisitDate"></label><br>
+            <label>Godzina wizyty: <input type="time" id="editVisitTime"></label><br>
+            <label>Notatka klienta: <textarea id="editClientNotes" rows="2"></textarea></label><br>
+            <label>Notatka admina: <textarea id="editAdminNotes" rows="2"></textarea></label><br>
+            <label>Status:
+                <select id="editStatus">
+                    <option value="PENDING">PENDING</option>
+                    <option value="ACCEPTED">ACCEPTED</option>
+                    <option value="REJECTED">REJECTED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                </select>
+            </label><br>
+            <button type="submit">Zapisz</button>
+        </form>
+    </div>
+</div>
+
 <script>
+    let reservationsCache = [];
+
+    // MODAL obsługa
+    function openModal(reservation) {
+        document.getElementById('modal-bg').classList.add('active');
+        document.getElementById('editId').value = reservation.id;
+        document.getElementById('editFirstName').value = reservation.firstName || '';
+        document.getElementById('editLastName').value = reservation.lastName || '';
+        document.getElementById('editEmail').value = reservation.email || '';
+        document.getElementById('editPhoneNumber').value = reservation.phoneNumber || '';
+        document.getElementById('editCarBrand').value = reservation.carBrand || '';
+        document.getElementById('editCarModel').value = reservation.carModel || '';
+        document.getElementById('editServiceType').value = reservation.serviceType || '';
+        document.getElementById('editVisitDate').value = reservation.visitDate || '';
+        document.getElementById('editVisitTime').value = reservation.visitTime || '';
+        document.getElementById('editClientNotes').value = reservation.clientNotes || '';
+        document.getElementById('editAdminNotes').value = reservation.adminNotes || '';
+        document.getElementById('editStatus').value = reservation.status || 'PENDING';
+    }
+    function closeModal() {
+        document.getElementById('modal-bg').classList.remove('active');
+    }
+    document.getElementById('modal-bg').onclick = function(e) {
+        if (e.target === this) closeModal();
+    }
+
+    // FORM obsługa edycji
+    document.getElementById('editForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const id = document.getElementById('editId').value;
+        const payload = {
+            firstName: document.getElementById('editFirstName').value,
+            lastName: document.getElementById('editLastName').value,
+            email: document.getElementById('editEmail').value,
+            phoneNumber: document.getElementById('editPhoneNumber').value,
+            carBrand: document.getElementById('editCarBrand').value,
+            carModel: document.getElementById('editCarModel').value,
+            serviceType: document.getElementById('editServiceType').value,
+            visitDate: document.getElementById('editVisitDate').value,
+            visitTime: document.getElementById('editVisitTime').value,
+            clientNotes: document.getElementById('editClientNotes').value,
+            adminNotes: document.getElementById('editAdminNotes').value,
+            status: document.getElementById('editStatus').value
+        };
+        const res = await fetch('/api/reservations/' + id, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        if(res.ok) {
+            document.getElementById('msg').textContent = 'Zaktualizowano rezerwację!';
+            closeModal();
+            fetchReservations();
+        } else {
+            document.getElementById('msg').textContent = 'Błąd aktualizacji rezerwacji!';
+        }
+    };
+
+    // RESERVATIONS obsługa
     async function fetchReservations() {
+        document.getElementById('msg').textContent = '';
         const res = await fetch('/api/reservations');
         if (!res.ok) {
             document.getElementById('msg').textContent = 'Błąd pobierania rezerwacji';
             document.getElementById('msg').classList.add('error');
             return;
         }
-        const reservations = await res.json();
-        if(reservations.length === 0) {
+        reservationsCache = await res.json();
+        renderReservations();
+    }
+
+    function renderReservations() {
+        const statusFilter = document.getElementById('statusFilter').value;
+        let filtered = reservationsCache;
+        if (statusFilter) {
+            filtered = reservationsCache.filter(r => r.status === statusFilter);
+        }
+        if(filtered.length === 0) {
             reservationList.innerHTML = "<li>Brak rezerwacji.</li>";
             return;
         }
-        reservationList.innerHTML = reservations.map(r =>
+        reservationList.innerHTML = filtered.map(r =>
             `<li>
-      <b>${r.firstName} ${r.lastName}</b> (${r.email}, ${r.phoneNumber})
-      <br>Pojazd: ${r.carBrand} ${r.carModel}
-      <br>Usługa: ${r.serviceType} | Notatka: ${r.notes || '-'}
-      <br>
-      <button onclick="deleteReservation(${r.id})">Usuń</button>
+      <b>${r.firstName || '(brak imienia)'} ${r.lastName || '(brak nazwiska)'}</b>
+      (${r.email || '-'}, ${r.phoneNumber || '-'}) --- Status: <b>${r.status}</b>
+      <br>Pojazd: ${r.carBrand || '-'} ${r.carModel || '-'}
+      <br>Usługa: ${r.serviceType || '-'}
+      <br>Notatka klienta: ${r.clientNotes || '-'}
+      <br>Notatka admina: ${r.adminNotes || '-'}
+      <div class="reservation-buttons">
+        <button onclick="deleteReservation(${r.id})">Usuń</button>
+        <button onclick='openModal(${JSON.stringify(r)})'>Edytuj</button>
+        ${
+                r.status === "PENDING"
+                    ? `<button onclick="changeStatus(${r.id}, 'ACCEPTED')">Akceptuj</button>
+             <button onclick="changeStatus(${r.id}, 'REJECTED')">Odrzuć</button>` : ""
+            }
+        ${
+                r.status === "ACCEPTED"
+                    ? `<button onclick="changeStatus(${r.id}, 'CANCELLED')">Anuluj</button>` : ""
+            }
+      </div>
     </li>`
         ).join('');
     }
@@ -53,6 +212,24 @@
             document.getElementById('msg').classList.add('error');
         }
     }
+
+    async function changeStatus(id, status) {
+        const res = await fetch(`/api/reservations/${id}/status`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ status })
+        });
+        if(res.ok) {
+            document.getElementById('msg').textContent = 'Status zaktualizowany!';
+            fetchReservations();
+        } else {
+            document.getElementById('msg').textContent = 'Błąd aktualizacji statusu!';
+            document.getElementById('msg').classList.add('error');
+        }
+    }
+
+    document.getElementById('statusFilter').addEventListener('change', renderReservations);
+
     fetchReservations();
 </script>
 </body>
