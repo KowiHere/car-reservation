@@ -4,12 +4,13 @@ import com.crp.warsztat.dto.ReservationCalendarDTO;
 import com.crp.warsztat.model.Reservation;
 import com.crp.warsztat.model.ReservationStatus;
 import com.crp.warsztat.repository.ReservationRepository;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/reservations")
@@ -29,13 +30,13 @@ public class ReservationApiController {
 
     // GET /api/reservations/{id}
     @GetMapping("/{id}")
-    public Optional<Reservation> getReservationById(@PathVariable Long id) {
-        return reservationRepository.findById(id);
+    public Reservation getReservationById(@PathVariable Long id) {
+        return reservationRepository.findById(id).orElseThrow();
     }
 
     // POST /api/reservations
     @PostMapping
-    public Reservation createReservation(@RequestBody Reservation reservation) {
+    public Reservation createReservation(@Valid @RequestBody Reservation reservation) {
         reservation.setStatus(ReservationStatus.PENDING);
         reservation.setAdminNotes(""); // Domyślnie puste
         return reservationRepository.save(reservation);
@@ -45,12 +46,15 @@ public class ReservationApiController {
     // DELETE /api/reservations/{id}
     @DeleteMapping("/{id}")
     public void deleteReservation(@PathVariable Long id) {
+        if (!reservationRepository.existsById(id)) {
+            throw new NoSuchElementException("Rezerwacja o id " + id + " nie istnieje");
+        }
         reservationRepository.deleteById(id);
     }
 
     // PUT /api/reservations/{id} – pełna edycja rezerwacji
     @PutMapping("/{id}")
-    public Reservation updateReservation(@PathVariable Long id, @RequestBody Reservation updated) {
+    public Reservation updateReservation(@PathVariable Long id, @Valid @RequestBody Reservation updated) {
         Reservation reservation = reservationRepository.findById(id).orElseThrow();
 
         reservation.setFirstName(updated.getFirstName());

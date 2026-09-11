@@ -1,6 +1,8 @@
 package com.crp.warsztat.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 
 @Entity
 public class Reservation {
@@ -10,9 +12,14 @@ public class Reservation {
     private Long id;
 
     // --- Dane klienta (prosto z formularza) ---
+    @NotBlank(message = "Imię jest wymagane")
     private String firstName;
+    @NotBlank(message = "Nazwisko jest wymagane")
     private String lastName;
+    @NotBlank(message = "Email jest wymagany")
+    @Email(message = "Niepoprawny adres email")
     private String email;
+    @NotBlank(message = "Telefon jest wymagany")
     private String phoneNumber;
 
     // --- Dane pojazdu ---
@@ -23,7 +30,9 @@ public class Reservation {
     private String serviceType;
 
     // --- Termin wizyty ---
+    @NotBlank(message = "Data wizyty jest wymagana")
     private String visitDate; // np. "2025-06-08"
+    @NotBlank(message = "Godzina wizyty jest wymagana")
     private String visitTime; // np. "08:30"
 
     // --- Dodatkowe informacje ---

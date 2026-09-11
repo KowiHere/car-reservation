@@ -165,3 +165,32 @@ Wszystkie cztery repozytoria (`ReservationRepository`, `ClientRepository`, `Serv
 3. **Wyjątki nieobsłużone** — wzorzec `.orElseThrow()` / `deleteById()` / `Enum.valueOf()` bez `try/catch` powtarza się w kontrolerach i przy błędnych danych zwraca kod 500 zamiast sensownego 400/404.
 4. **Dane wpisywane bezpośrednio do `innerHTML`** w `admin.html` (linie 179–201) — potencjalne ryzyko XSS, jeśli klient wpisze w formularzu np. znaki `<script>` w polu notatki.
 5. **Dwa martwe/nieużywane fragmenty kodu** — `Client.setFirstName()` (`Client.java:79-80`) i konstruktor `ServiceType(String, double)` (`ServiceType.java:27-29`) — wygląda na pozostawione resztki po zmianie koncepcji, obie metody nic nie robią.
+
+---
+
+## Etap: naprawa najważniejszych problemów bezpieczeństwa i błędów (po przeglądzie)
+
+Zmiany wprowadzone w tym etapie, bez logowania się do żadnej usługi trzeciej (Railway/GitHub) — same poprawki w kodzie.
+
+### 1. Usunięcie hasła do bazy z repozytorium
+- **`src/main/resources/application.properties:1-11`** — `spring.datasource.url`, `spring.datasource.username`, `spring.datasource.password` nie są już wpisane na sztywno, tylko odczytywane ze zmiennych środowiskowych `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` (bez wartości domyślnych — aplikacja nie wystartuje bez ich ustawienia, co jest zamierzone). Dodano też `admin.username`/`admin.password` (zmienne `ADMIN_USERNAME`/`ADMIN_PASSWORD`, z domyślną wartością dev `admin`/`admin` do szybkiego startu lokalnego).
+- **`.gitignore`** — dodano wpisy `.env` i `application-local.properties`, żeby ewentualne lokalne pliki z sekretami nigdy nie trafiły do repo.
+- **`SETUP.md`** (nowy plik) — instrukcja, jakie zmienne środowiskowe trzeba ustawić, żeby uruchomić aplikację, i przypomnienie, że **stare hasło do bazy Railway trzeba zrotować ręcznie w panelu Railway** (samo usunięcie go z pliku nie unieważnia hasła, które nadal widać w historii commitów — to jedyny krok wymagający zalogowania się do serwisu trzeciego, którego nie mogłem wykonać automatycznie).
+
+### 2. Autoryzacja panelu admina (Spring Security)
+- **`pom.xml`** — dodano zależności `spring-boot-starter-security` i `spring-boot-starter-validation`.
+- **`src/main/java/com/crp/warsztat/config/SecurityConfig.java`** (nowy plik) — konfiguracja bezpieczeństwa: tylko strona klienta (`/`, `/index.html`, `/styles.css`), składanie rezerwacji (`POST /api/reservations`) i publiczny kalendarz zajętych terminów (`GET /api/reservations/calendar/**`) są dostępne bez logowania. Wszystko inne (panel admina, edycja/usuwanie rezerwacji, klienci, typy usług, komentarze) wymaga zalogowania metodą HTTP Basic jako użytkownik z rolą ADMIN, którego dane pochodzą ze zmiennych środowiskowych.
+
+### 3. Obsługa błędów i walidacja danych
+- **`src/main/java/com/crp/warsztat/controller/GlobalExceptionHandler.java`** (nowy plik) — globalny handler wyjątków: brak zasobu (`NoSuchElementException`) → HTTP 404, niepoprawna wartość (np. błędny status, `IllegalArgumentException`) → HTTP 400, błąd walidacji formularza (`MethodArgumentNotValidException`) → HTTP 400 z listą błędnych pól. Wcześniej wszystkie te przypadki kończyły się kodem 500.
+- **`model/Reservation.java`** — dodano adnotacje walidacyjne (`@NotBlank`, `@Email`) na polach `firstName`, `lastName`, `email`, `phoneNumber`, `visitDate`, `visitTime`.
+- **`controller/ReservationApiController.java`** — `createReservation`/`updateReservation` używają teraz `@Valid`; `getReservationById` i `deleteReservation` rzucają `NoSuchElementException` przy nieistniejącym ID zamiast zwracać puste `Optional`/pozwalać na wyjątek z `deleteById`.
+- **`controller/ClientController.java`, `controller/ServiceTypeController.java`, `controller/ReservationCommentController.java`** — analogicznie: `getXById` rzuca wyjątek zamiast zwracać `Optional`, `deleteX` sprawdza `existsById` przed usunięciem i rzuca czytelny błąd.
+
+### 4. Poprawka XSS w panelu admina
+- **`src/main/resources/static/admin.html`** — dodano funkcję `escapeHtml()` (nowy fragment przed `let reservationsCache`) i użyto jej przy wstawianiu danych rezerwacji do `innerHTML` w `renderReservations()` (imię, nazwisko, email, telefon, status, pojazd, usługa, notatki). Wcześniej złośliwy tekst wpisany przez klienta w formularzu (np. w polu notatki) mógłby wykonać się jako kod w przeglądarce admina.
+
+### Czego NIE zrobiono w tym etapie (wymaga Twojej akcji)
+- **Fizyczna rotacja hasła do bazy danych na Railway** — wymaga zalogowania się do panelu Railway, co jest poza moim zasięgiem. Stare hasło, które było w historii commitów, nadal jest aktywne, dopóki go nie zmienisz.
+- Migracje bazy danych (Flyway/Liquibase) i wyłączenie `ddl-auto=update` na produkcji — odłożone na później.
+- Testy jednostkowe i CI/CD — odłożone na później.

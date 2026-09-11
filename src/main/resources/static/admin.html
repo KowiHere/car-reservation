@@ -97,6 +97,13 @@
 <script>
     let reservationsCache = [];
 
+    // Zabezpiecza tekst przed wstrzyknięciem HTML/JS przy wstawianiu do innerHTML
+    function escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = value ?? '';
+        return div.innerHTML;
+    }
+
     // MODAL obsługa
     function openModal(reservation) {
         document.getElementById('modal-bg').classList.add('active');
@@ -178,15 +185,15 @@
         }
         reservationList.innerHTML = filtered.map(r =>
             `<li>
-      <b>${r.firstName || '(brak imienia)'} ${r.lastName || '(brak nazwiska)'}</b>
-      (${r.email || '-'}, ${r.phoneNumber || '-'}) --- Status: <b>${r.status}</b>
-      <br>Pojazd: ${r.carBrand || '-'} ${r.carModel || '-'}
-      <br>Usługa: ${r.serviceType || '-'}
-      <br>Notatka klienta: ${r.clientNotes || '-'}
-      <br>Notatka admina: ${r.adminNotes || '-'}
+      <b>${escapeHtml(r.firstName) || '(brak imienia)'} ${escapeHtml(r.lastName) || '(brak nazwiska)'}</b>
+      (${escapeHtml(r.email) || '-'}, ${escapeHtml(r.phoneNumber) || '-'}) --- Status: <b>${escapeHtml(r.status)}</b>
+      <br>Pojazd: ${escapeHtml(r.carBrand) || '-'} ${escapeHtml(r.carModel) || '-'}
+      <br>Usługa: ${escapeHtml(r.serviceType) || '-'}
+      <br>Notatka klienta: ${escapeHtml(r.clientNotes) || '-'}
+      <br>Notatka admina: ${escapeHtml(r.adminNotes) || '-'}
       <div class="reservation-buttons">
         <button onclick="deleteReservation(${r.id})">Usuń</button>
-        <button onclick='openModal(${JSON.stringify(r)})'>Edytuj</button>
+        <button onclick='openModal(${JSON.stringify(r).replace(/'/g, "&#39;")})'>Edytuj</button>
         ${
                 r.status === "PENDING"
                     ? `<button onclick="changeStatus(${r.id}, 'ACCEPTED')">Akceptuj</button>
