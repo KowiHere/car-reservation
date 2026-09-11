@@ -191,6 +191,23 @@ Zmiany wprowadzone w tym etapie, bez logowania się do żadnej usługi trzeciej 
 - **`src/main/resources/static/admin.html`** — dodano funkcję `escapeHtml()` (nowy fragment przed `let reservationsCache`) i użyto jej przy wstawianiu danych rezerwacji do `innerHTML` w `renderReservations()` (imię, nazwisko, email, telefon, status, pojazd, usługa, notatki). Wcześniej złośliwy tekst wpisany przez klienta w formularzu (np. w polu notatki) mógłby wykonać się jako kod w przeglądarce admina.
 
 ### Czego NIE zrobiono w tym etapie (wymaga Twojej akcji)
-- **Fizyczna rotacja hasła do bazy danych na Railway** — wymaga zalogowania się do panelu Railway, co jest poza moim zasięgiem. Stare hasło, które było w historii commitów, nadal jest aktywne, dopóki go nie zmienisz.
+
+- [ ] **TODO (do zrobienia przez właściciela projektu): fizyczna rotacja hasła do bazy danych na Railway.** Wymaga zalogowania się do panelu Railway, co jest poza zasięgiem automatycznych zmian w kodzie. Stare hasło, które było w historii commitów, nadal jest aktywne, dopóki nie zostanie zmienione. Obecnie odłożone — nie ma to wpływu na dalsze prace nad kodem.
 - Migracje bazy danych (Flyway/Liquibase) i wyłączenie `ddl-auto=update` na produkcji — odłożone na później.
-- Testy jednostkowe i CI/CD — odłożone na później.
+
+---
+
+## Etap: testy jednostkowe i CI/CD (bez logowania do usług trzecich)
+
+### 1. Testy jednostkowe
+- **`pom.xml`** — dodano zależności testowe: `spring-security-test` i `h2` (baza danych w pamięci, tylko do testów — produkcja wciąż używa PostgreSQL).
+- **`src/test/resources/application.properties`** (nowy plik) — konfiguracja używana wyłącznie podczas testów: baza H2 w pamięci zamiast prawdziwego Postgresa na Railway, dzięki czemu testy (i `WarsztatApplicationTests.contextLoads()`) działają offline, bez potrzeby dostępu do żywej bazy danych i bez podawania prawdziwych danych logowania.
+- **`src/test/java/com/crp/warsztat/controller/ReservationApiControllerTest.java`** (nowy plik) — 7 testów najważniejszego kontrolera (`ReservationApiController`), m.in.: `POST` zawsze wymusza status `PENDING` niezależnie od tego, co przyśle klient; formularz bez wymaganego pola (email) zwraca 400 (dzięki walidacji z poprzedniego etapu); pobranie/usunięcie nieistniejącej rezerwacji zwraca 404 (dzięki `GlobalExceptionHandler`); zmiana statusu na niepoprawną wartość zwraca 400, a na poprawną — 200. Testy działają na mocku repozytorium (`@MockBean`) — nie potrzebują żadnej bazy danych — i z wyłączonymi filtrami bezpieczeństwa (`@AutoConfigureMockMvc(addFilters = false)`), bo sprawdzają logikę kontrolera, a nie autoryzację.
+
+### 2. CI/CD
+- **`.github/workflows/ci.yml`** (nowy plik) — workflow GitHub Actions, uruchamiany automatycznie przy każdym `push` i każdym pull requeście: instaluje JDK 21, buduje projekt i uruchamia wszystkie testy (`./mvnw verify`). Dzięki testom działającym na H2 (patrz wyżej) workflow nie wymaga żadnych sekretów ani dostępu do prawdziwej bazy danych — działa "od zera" na czystym repozytorium.
+
+### Nadal odłożone na później
+- Testy dla pozostałych kontrolerów (`ClientController`, `ServiceTypeController`, `ReservationCommentController`) i dla `SecurityConfig`.
+- Migracje bazy danych (Flyway/Liquibase), wyłączenie `ddl-auto=update` na produkcji.
+- Rotacja hasła do bazy na Railway (patrz TODO wyżej).
