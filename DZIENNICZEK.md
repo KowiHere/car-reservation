@@ -253,6 +253,28 @@ Dodano publiczny dostęp (bez logowania) do odczytu `GET /service-types` — kli
 
 ### Wciąż odłożone na później
 - Migracja starych danych `serviceType` (tekst → relacja) — obecnie tylko `ddl-auto=update`, bez czyszczenia starej kolumny.
-- Testy dla `ClientController`, `ServiceTypeController`, `ReservationCommentController`, `SecurityConfig`.
 - Panel admina nie ma jeszcze widoku "zajętości 6 stanowisk" w formie kalendarza (tylko lista + publiczny FullCalendar na stronie klienta).
+- Rotacja hasła do bazy na Railway (TODO, patrz wyżej).
+
+---
+
+## Etap: zabezpieczenie starych danych + testy dla pozostałych kontrolerów i SecurityConfig
+
+### 1. Zabezpieczenie przed niekompletnymi/starymi danymi
+- **`controller/ReservationApiController.java`** — `getFullcalendarEvents()` (endpoint `/api/reservations/calendar/fullcalendar`) pomija teraz rezerwacje sprzed wprowadzenia silnika planowania (bez wyliczonego `stationNumber`/`endDate`/`endTime`) — wcześniej takie rekordy wyświetlałyby się w kalendarzu klienta jako "Stanowisko null". (`SchedulingService.findFreeStation()` już wcześniej pomijał takie rekordy przy sprawdzaniu zajętości stanowisk).
+- **`MIGRACJA_DANYCH.md`** (nowy plik) — instrukcja krok po kroku, jak sprawdzić i ręcznie uzupełnić stare rezerwacje w bazie na Railway (zapytanie SQL do znalezienia rekordów z pustym `service_type_id`, sposób ich przeliczenia przez ponowny zapis w panelu admina). **Nie mogłem tego wykonać sam** — wymaga dostępu do panelu Railway, czyli logowania się do usługi trzeciej. To zadanie właściciela projektu, jeśli w bazie są realne, aktualne rezerwacje sprzed tej zmiany.
+
+### 2. Nowe testy jednostkowe
+- **`ClientControllerTest.java`** (nowy plik) — 5 testów: pobranie istniejącego/nieistniejącego klienta (200/404), utworzenie klienta, usunięcie istniejącego/nieistniejącego (200/404, z weryfikacją że `deleteById` nie jest wywoływane dla nieistniejącego ID).
+- **`ServiceTypeControllerTest.java`** (nowy plik) — 4 testy: lista usług, pobranie nieistniejącej (404), utworzenie, usunięcie nieistniejącej (404).
+- **`ReservationCommentControllerTest.java`** (nowy plik) — 4 testy: komentarze dla danej rezerwacji, pobranie nieistniejącego (404), utworzenie, usunięcie nieistniejącego (404).
+- **`config/SecurityConfigTest.java`** (nowy plik, nowy pakiet testowy) — 8 testów integracyjnych (pełny kontekst Springa, **z włączonymi filtrami bezpieczeństwa** — w przeciwieństwie do testów kontrolerów powyżej): potwierdza, że strona klienta (`index.html`, `styles.css`), publiczny kalendarz i lista usług działają bez logowania; że lista wszystkich rezerwacji, usuwanie rezerwacji i lista klientów zwracają 401 bez logowania; że poprawne dane logowania administratora (z `src/test/resources/application.properties`) dają dostęp, a niepoprawne hasło nadal zwraca 401.
+
+### Stan testów po tym etapie
+38 testów, wszystkie przechodzą (`WarsztatApplicationTests`, `SchedulingServiceTest`, `ReservationApiControllerTest`, `ClientControllerTest`, `ServiceTypeControllerTest`, `ReservationCommentControllerTest`, `SecurityConfigTest`).
+
+### Wciąż odłożone na później
+- Migracja starych danych `serviceType` (tekst → relacja) na prawdziwej bazie Railway — patrz `MIGRACJA_DANYCH.md`, wymaga Twojej akcji.
+- Widok "zajętości 6 stanowisk" w panelu admina.
+- Migracje bazy danych (Flyway/Liquibase), wyłączenie `ddl-auto=update` na produkcji.
 - Rotacja hasła do bazy na Railway (TODO, patrz wyżej).

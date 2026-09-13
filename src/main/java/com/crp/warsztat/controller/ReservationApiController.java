@@ -110,6 +110,9 @@ public class ReservationApiController {
     public List<Map<String, Object>> getFullcalendarEvents() {
         return reservationRepository.findAll().stream()
                 .filter(res -> res.getStatus() == ReservationStatus.PENDING || res.getStatus() == ReservationStatus.ACCEPTED)
+                // Pomija rekordy sprzed wprowadzenia silnika planowania (bez wyliczonego
+                // końca wizyty/stanowiska) — inaczej wyświetlałyby się jako "Stanowisko null".
+                .filter(res -> res.getStationNumber() != null && res.getEndDate() != null && res.getEndTime() != null)
                 .map(res -> Map.<String, Object>of(
                         "title", "Stanowisko " + res.getStationNumber() + " – " + res.getFirstName() + " " + res.getLastName(),
                         "start", res.getVisitDate() + "T" + res.getVisitTime(),
