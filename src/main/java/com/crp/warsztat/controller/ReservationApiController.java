@@ -123,6 +123,26 @@ public class ReservationApiController {
     }
 
     /**
+     * Widok dla panelu admina — pokazuje zajętość wszystkich 6 stanowisk naraz
+     * (kolor = numer stanowiska, nie klient), żeby admin widział jednym spojrzeniem
+     * które stanowisko jest wolne w danym terminie. Wymaga zalogowania (patrz SecurityConfig).
+     */
+    @GetMapping("/calendar/stations")
+    public List<Map<String, Object>> getStationOccupancy() {
+        return reservationRepository.findAll().stream()
+                .filter(res -> res.getStatus() != ReservationStatus.REJECTED && res.getStatus() != ReservationStatus.CANCELLED)
+                .filter(res -> res.getStationNumber() != null && res.getEndDate() != null && res.getEndTime() != null)
+                .map(res -> Map.<String, Object>of(
+                        "title", "St. " + res.getStationNumber() + ": " + res.getFirstName() + " " + res.getLastName()
+                                + (res.getServiceType() != null ? " (" + res.getServiceType().getName() + ")" : ""),
+                        "start", res.getVisitDate() + "T" + res.getVisitTime(),
+                        "end", res.getEndDate() + "T" + res.getEndTime(),
+                        "color", stationColor(res.getStationNumber())
+                ))
+                .toList();
+    }
+
+    /**
      * Deterministyczny kolor na podstawie e-maila klienta — kolory nie mają znaczenia
      * biznesowego, służą tylko do wizualnego odróżnienia rezerwacji różnych klientów.
      */
@@ -130,6 +150,12 @@ public class ReservationApiController {
         String[] palette = {"#e95a3e", "#3e8ee9", "#3ee9a0", "#e9c53e", "#a03ee9", "#e93ea0", "#3ee9df"};
         int index = Math.abs((email == null ? "" : email).hashCode()) % palette.length;
         return palette[index];
+    }
+
+    /** Jeden stały kolor na stanowisko (1-6), żeby admin mógł je odróżnić na siatce. */
+    private String stationColor(int stationNumber) {
+        String[] palette = {"#e95a3e", "#3e8ee9", "#3ee9a0", "#e9c53e", "#a03ee9", "#4ecdc4"};
+        return palette[(stationNumber - 1) % palette.length];
     }
 
     /**

@@ -39,6 +39,18 @@ class SecurityConfigTest {
     }
 
     @Test
+    void widokZajetosciStanowisk_bezLogowania_zwraca401() throws Exception {
+        mockMvc.perform(get("/api/reservations/calendar/stations")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void widokZajetosciStanowisk_zPoprawnymLoginemAdmina_zwraca200() throws Exception {
+        mockMvc.perform(get("/api/reservations/calendar/stations")
+                        .with(SecurityMockMvcRequestPostProcessors.httpBasic("testadmin", "testpass")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void listaWszystkichRezerwacji_bezLogowania_zwraca401() throws Exception {
         mockMvc.perform(get("/api/reservations")).andExpect(status().isUnauthorized());
     }

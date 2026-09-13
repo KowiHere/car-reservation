@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title>Panel Admina – Rezerwacje Warsztat</title>
     <link href="styles.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
         .modal-bg {
             position: fixed;
@@ -37,6 +39,29 @@
             cursor: pointer;
         }
         .reservation-buttons button { margin-right: 7px;}
+        .stations-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .stations-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: bold;
+        }
+        .stations-legend .swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+        #stationsCalendar {
+            background: #181818;
+            border-radius: 10px;
+            margin-bottom: 32px;
+        }
     </style>
 </head>
 <body>
@@ -60,6 +85,12 @@
     </select>
     <button onclick="fetchReservations()">Odśwież</button>
 </div>
+
+<h2>Zajętość stanowisk</h2>
+<div class="stations-legend" id="stationsLegend"></div>
+<div id="stationsCalendar"></div>
+
+<h2>Lista rezerwacji</h2>
 <div class="msg" id="msg"></div>
 <ul id="reservationList"></ul>
 
@@ -113,6 +144,34 @@
         select.innerHTML = types.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
     }
     loadServiceTypesIntoEditSelect();
+
+    // Ten sam kolor na stanowisko, co po stronie backendu (ReservationApiController.stationColor) —
+    // czysto wizualne odróżnienie stanowisk 1-6 na siatce, bez znaczenia biznesowego.
+    const STATION_PALETTE = ["#e95a3e", "#3e8ee9", "#3ee9a0", "#e9c53e", "#a03ee9", "#4ecdc4"];
+    const STATION_COUNT = 6;
+
+    function renderStationsLegend() {
+        document.getElementById('stationsLegend').innerHTML = Array.from({length: STATION_COUNT}, (_, i) =>
+            `<span><span class="swatch" style="background:${STATION_PALETTE[i]}"></span>Stanowisko ${i + 1}</span>`
+        ).join('');
+    }
+    renderStationsLegend();
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const calendarEl = document.getElementById('stationsCalendar');
+        const stationsCalendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'timeGridWeek',
+            slotMinTime: '08:00:00',
+            slotMaxTime: '16:00:00',
+            allDaySlot: false,
+            locale: 'pl',
+            firstDay: 1,
+            events: '/api/reservations/calendar/stations',
+            height: 'auto',
+            contentHeight: 'auto'
+        });
+        stationsCalendar.render();
+    });
 
     // MODAL obsługa
     function openModal(reservation) {

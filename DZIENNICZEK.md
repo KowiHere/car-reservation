@@ -275,6 +275,35 @@ Dodano publiczny dostęp (bez logowania) do odczytu `GET /service-types` — kli
 
 ### Wciąż odłożone na później
 - Migracja starych danych `serviceType` (tekst → relacja) na prawdziwej bazie Railway — patrz `MIGRACJA_DANYCH.md`, wymaga Twojej akcji.
-- Widok "zajętości 6 stanowisk" w panelu admina.
 - Migracje bazy danych (Flyway/Liquibase), wyłączenie `ddl-auto=update` na produkcji.
 - Rotacja hasła do bazy na Railway (TODO, patrz wyżej).
+
+---
+
+## Etap: widok zajętości 6 stanowisk w panelu admina
+
+Dotąd admin widział rezerwacje tylko jako listę tekstową — nie miał żadnego graficznego podglądu, kiedy które z 6 stanowisk jest zajęte. Ten etap dodaje taki widok, wzorowany na tym samym kalendarzu (FullCalendar), który klient widzi na `index.html`, ale kolorowany według **numeru stanowiska** (nie klienta), z legendą.
+
+### 1. Backend — `controller/ReservationApiController.java`
+- Nowy endpoint `GET /api/reservations/calendar/stations` — zwraca wszystkie rezerwacje, które nie są odrzucone/anulowane (czyli `PENDING` i `ACCEPTED`), z tytułem w formacie `"St. <numer> – <klient> (<usługa>)"` i kolorem zależnym wyłącznie od numeru stanowiska (nowa funkcja `stationColor()`, stała paleta 6 kolorów) — w odróżnieniu od publicznego `calendar/fullcalendar`, gdzie kolor zależy od klienta (`clientColor()`). Rekordy bez wyliczonego stanowiska/końca wizyty (stare dane, patrz `MIGRACJA_DANYCH.md`) są pomijane, tak jak w publicznym kalendarzu.
+
+### 2. Bezpieczeństwo — `config/SecurityConfig.java`
+Nowy endpoint jest **tylko dla admina** (w przeciwieństwie do pozostałych `calendar/**`, które są publiczne) — dodana bardziej szczegółowa reguła `GET /api/reservations/calendar/stations` → `hasRole("ADMIN")`, umieszczona **przed** ogólną regułą `permitAll` dla `calendar/**` (Spring Security stosuje pierwszą pasującą regułę, więc kolejność ma znaczenie).
+
+### 3. Frontend — `admin.html`
+- Dodano bibliotekę FullCalendar (wcześniej była tylko w `index.html`).
+- Nowa sekcja "Zajętość stanowisk": legenda kolorów (stanowisko 1-6, ta sama paleta co w backendzie) i siatka tygodniowa (`timeGridWeek`, godziny 08:00-16:00, pon-pt) zasilana z nowego endpointu `/api/reservations/calendar/stations`. Ponieważ strona wymaga zalogowania (HTTP Basic), a przeglądarka po pierwszym podaniu danych logowania cache'uje je dla tego samego originu, zapytanie `fetch` wykonywane przez FullCalendar automatycznie korzysta z tych samych danych logowania — bez dodatkowej obsługi w kodzie.
+- Lista rezerwacji przeniesiona pod nagłówek "Lista rezerwacji" (rozdzielenie wizualne od nowego widoku kalendarza).
+
+### 4. Nowe testy
+- **`SecurityConfigTest`** — 2 nowe testy: endpoint `calendar/stations` zwraca 401 bez logowania i 200 z poprawnymi danymi admina.
+- **`ReservationApiControllerTest`** — nowy test sprawdzający, że tytuł zdarzenia zawiera numer stanowiska.
+
+### Stan testów po tym etapie
+41 testów, wszystkie przechodzą.
+
+### Wciąż odłożone na później
+- Migracja starych danych `serviceType` (patrz `MIGRACJA_DANYCH.md`, wymaga Twojej akcji na Railway).
+- Migracje bazy danych (Flyway/Liquibase), wyłączenie `ddl-auto=update` na produkcji.
+- Rotacja hasła do bazy na Railway (TODO, patrz wyżej).
+- Widok stanowisk pokazuje tylko tydzień naraz — dla usług wielodniowych/wielotygodniowych trzeba przełączać tygodnie strzałkami FullCalendar (brak jeszcze widoku miesięcznego/Gantt na dłuższe okresy).

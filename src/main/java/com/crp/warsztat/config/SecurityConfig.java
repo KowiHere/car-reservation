@@ -45,6 +45,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/index.html", "/styles.css", "/favicon.ico").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reservations").permitAll()
+                        // Uwaga: bardziej szczegółowa reguła (stations = tylko admin) musi być
+                        // zadeklarowana PRZED ogólnym permitAll dla calendar/** — Spring Security
+                        // stosuje pierwszą pasującą regułę po kolei.
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reservations/calendar/stations").hasRole("ADMIN")
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reservations/calendar/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/service-types", "/service-types/**").permitAll()
                         .anyRequest().hasRole("ADMIN")

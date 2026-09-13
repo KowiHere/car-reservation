@@ -172,6 +172,19 @@ class ReservationApiControllerTest {
     }
 
     @Test
+    void getStationOccupancy_zwracaTytulZNumeremStanowiska() throws Exception {
+        Reservation r = sampleReservation();
+        r.setStationNumber(3);
+        r.setEndDate("2025-06-09");
+        r.setEndTime("09:30");
+        when(reservationRepository.findAll()).thenReturn(java.util.List.of(r));
+
+        mockMvc.perform(get("/api/reservations/calendar/stations"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value(org.hamcrest.Matchers.containsString("St. 3")));
+    }
+
+    @Test
     void updateStatus_zPoprawnaWartoscia_zwraca200() throws Exception {
         when(reservationRepository.findById(1L)).thenReturn(Optional.of(sampleReservation()));
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> inv.getArgument(0));
