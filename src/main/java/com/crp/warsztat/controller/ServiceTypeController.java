@@ -5,7 +5,7 @@ import com.crp.warsztat.repository.ServiceTypeRepository;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.NoSuchElementException;
 
 /**
  * Kontroler do obsługi typów usług (ServiceType).
@@ -29,8 +29,8 @@ public class ServiceTypeController {
 
     // Pobierz jeden typ usługi po ID (GET /service-types/{id})
     @GetMapping("/{id}")
-    public Optional<ServiceType> getServiceTypeById(@PathVariable Long id) {
-        return serviceTypeRepository.findById(id);
+    public ServiceType getServiceTypeById(@PathVariable Long id) {
+        return serviceTypeRepository.findById(id).orElseThrow();
     }
 
     // Dodaj nowy typ usługi (POST /service-types)
@@ -42,6 +42,9 @@ public class ServiceTypeController {
     // Usuń typ usługi (DELETE /service-types/{id})
     @DeleteMapping("/{id}")
     public void deleteServiceType(@PathVariable Long id) {
+        if (!serviceTypeRepository.existsById(id)) {
+            throw new NoSuchElementException("Typ usługi o id " + id + " nie istnieje");
+        }
         serviceTypeRepository.deleteById(id);
     }
 }

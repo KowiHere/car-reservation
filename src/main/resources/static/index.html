@@ -35,16 +35,11 @@
         <label for="serviceType">Typ usługi:</label>
         <select id="serviceType" required>
             <option value="">-- Wybierz --</option>
-            <option value="PRZEGLAD">Przegląd</option>
-            <option value="NAPRAWA">Naprawa</option>
-            <option value="MODYFIKACJA">Modyfikacja</option>
-            <option value="DIAGNOSTYKA">Diagnostyka</option>
-            <option value="MONTAZ_AKCESORIOW">Montaż akcesoriów</option>
         </select>
-        <label for="visitDate">Data wizyty:</label>
+        <label for="visitDate">Data podstawienia pojazdu:</label>
         <input type="date" id="visitDate" required>
-        <label for="visitTime">Godzina wizyty:</label>
-        <input type="time" id="visitTime" required>
+        <label for="visitTime">Godzina podstawienia (pon-pt, 08:00-16:00):</label>
+        <input type="time" id="visitTime" min="08:00" max="15:59" required>
         <label for="notes">Notatka (opcjonalnie):</label>
         <textarea id="notes" name="notes" rows="5" style="resize:vertical;"></textarea>
         <div class="msg" id="msg"></div>
@@ -58,6 +53,30 @@
 </div>
 
 <script>
+    // Wczytanie typów usług z backendu (czas trwania decyduje, kiedy auto będzie gotowe do odbioru)
+    async function loadServiceTypes() {
+        const res = await fetch('/service-types');
+        if (!res.ok) return;
+        const types = await res.json();
+        const select = document.getElementById('serviceType');
+        types.forEach(t => {
+            const option = document.createElement('option');
+            option.value = t.id;
+            option.textContent = t.name + (t.durationMinutes ? ` (${formatDuration(t.durationMinutes)})` : '');
+            select.appendChild(option);
+        });
+    }
+
+    function formatDuration(minutes) {
+        if (minutes < 60) return minutes + ' min';
+        const hours = minutes / 60;
+        if (hours < 8) return hours + ' h';
+        const days = Math.round(hours / 8);
+        return days + (days === 1 ? ' dzień roboczy' : ' dni robocze');
+    }
+
+    loadServiceTypes();
+
     // Obsługa wysyłki formularza (AJAX, bez przeładowania strony)
     document.getElementById('rezerwacjaForm').onsubmit = async function (e) {
         e.preventDefault();
@@ -71,14 +90,16 @@
                 phoneNumber: phoneNumber.value,
                 carBrand: carBrand.value,
                 carModel: carModel.value,
-                serviceType: serviceType.value,
+                serviceType: {id: Number(serviceType.value)},
                 visitDate: visitDate.value,
                 visitTime: visitTime.value,
-                notes: notes.value
+                clientNotes: notes.value
             })
         });
         if (res.ok) {
-            document.getElementById('msg').textContent = "Rezerwacja wysłana!";
+            const created = await res.json();
+            document.getElementById('msg').textContent =
+                `Rezerwacja wysłana! Przewidywany odbiór: ${created.endDate} ${created.endTime} (stanowisko ${created.stationNumber}).`;
             document.getElementById('msg').classList.remove('error');
             rezerwacjaForm.reset();
         } else {
