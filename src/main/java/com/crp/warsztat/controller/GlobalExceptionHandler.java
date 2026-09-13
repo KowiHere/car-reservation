@@ -1,5 +1,6 @@
 package com.crp.warsztat.controller;
 
+import com.crp.warsztat.service.NoAvailableStationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -23,6 +24,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleBadRequest(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Niepoprawne dane: " + ex.getMessage());
+    }
+
+    @ExceptionHandler(NoAvailableStationException.class)
+    public ResponseEntity<String> handleNoAvailableStation(NoAvailableStationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

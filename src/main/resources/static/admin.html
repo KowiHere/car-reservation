@@ -76,7 +76,7 @@
             <label>Telefon: <input type="text" id="editPhoneNumber"></label><br>
             <label>Marka pojazdu: <input type="text" id="editCarBrand"></label><br>
             <label>Model pojazdu: <input type="text" id="editCarModel"></label><br>
-            <label>Typ usługi: <input type="text" id="editServiceType"></label><br>
+            <label>Typ usługi: <select id="editServiceType"></select></label><br>
             <label>Data wizyty: <input type="date" id="editVisitDate"></label><br>
             <label>Godzina wizyty: <input type="time" id="editVisitTime"></label><br>
             <label>Notatka klienta: <textarea id="editClientNotes" rows="2"></textarea></label><br>
@@ -104,6 +104,16 @@
         return div.innerHTML;
     }
 
+    // Wczytanie typów usług do selecta w oknie edycji
+    async function loadServiceTypesIntoEditSelect() {
+        const res = await fetch('/service-types');
+        if (!res.ok) return;
+        const types = await res.json();
+        const select = document.getElementById('editServiceType');
+        select.innerHTML = types.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+    }
+    loadServiceTypesIntoEditSelect();
+
     // MODAL obsługa
     function openModal(reservation) {
         document.getElementById('modal-bg').classList.add('active');
@@ -114,7 +124,7 @@
         document.getElementById('editPhoneNumber').value = reservation.phoneNumber || '';
         document.getElementById('editCarBrand').value = reservation.carBrand || '';
         document.getElementById('editCarModel').value = reservation.carModel || '';
-        document.getElementById('editServiceType').value = reservation.serviceType || '';
+        document.getElementById('editServiceType').value = reservation.serviceType ? reservation.serviceType.id : '';
         document.getElementById('editVisitDate').value = reservation.visitDate || '';
         document.getElementById('editVisitTime').value = reservation.visitTime || '';
         document.getElementById('editClientNotes').value = reservation.clientNotes || '';
@@ -139,7 +149,7 @@
             phoneNumber: document.getElementById('editPhoneNumber').value,
             carBrand: document.getElementById('editCarBrand').value,
             carModel: document.getElementById('editCarModel').value,
-            serviceType: document.getElementById('editServiceType').value,
+            serviceType: {id: Number(document.getElementById('editServiceType').value)},
             visitDate: document.getElementById('editVisitDate').value,
             visitTime: document.getElementById('editVisitTime').value,
             clientNotes: document.getElementById('editClientNotes').value,
@@ -188,7 +198,8 @@
       <b>${escapeHtml(r.firstName) || '(brak imienia)'} ${escapeHtml(r.lastName) || '(brak nazwiska)'}</b>
       (${escapeHtml(r.email) || '-'}, ${escapeHtml(r.phoneNumber) || '-'}) --- Status: <b>${escapeHtml(r.status)}</b>
       <br>Pojazd: ${escapeHtml(r.carBrand) || '-'} ${escapeHtml(r.carModel) || '-'}
-      <br>Usługa: ${escapeHtml(r.serviceType) || '-'}
+      <br>Usługa: ${r.serviceType ? escapeHtml(r.serviceType.name) : '-'}
+      <br>Termin: ${escapeHtml(r.visitDate)} ${escapeHtml(r.visitTime)} &rarr; ${escapeHtml(r.endDate) || '?'} ${escapeHtml(r.endTime) || '?'} (stanowisko ${r.stationNumber ?? '?'})
       <br>Notatka klienta: ${escapeHtml(r.clientNotes) || '-'}
       <br>Notatka admina: ${escapeHtml(r.adminNotes) || '-'}
       <div class="reservation-buttons">

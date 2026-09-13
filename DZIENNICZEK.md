@@ -211,3 +211,48 @@ Zmiany wprowadzone w tym etapie, bez logowania się do żadnej usługi trzeciej 
 - Testy dla pozostałych kontrolerów (`ClientController`, `ServiceTypeController`, `ReservationCommentController`) i dla `SecurityConfig`.
 - Migracje bazy danych (Flyway/Liquibase), wyłączenie `ddl-auto=update` na produkcji.
 - Rotacja hasła do bazy na Railway (patrz TODO wyżej).
+
+---
+
+## Etap: właściwy silnik planowania wizyt (czas trwania usługi, godziny pracy, 6 stanowisk)
+
+Kontekst od właściciela projektu: warsztat pracuje **pon-pt 08:00-16:00**, ma **6 stanowisk i 6 pracowników** (czyli może obsługiwać do 6 rezerwacji równolegle). Każda usługa ma z góry znany czas trwania (od minut po dni/tygodnie). Jeśli usługa nie mieści się w godzinach pracy danego dnia, wizyta "przechodzi" na kolejny dzień roboczy (piątek → poniedziałek, z pominięciem soboty/niedzieli) — dokładnie tak, jak w opisanym przykładzie: auto podstawione o 8:00 na usługę 7-godzinną odbiera się dopiero po godzinach pracy, czyli następnego dnia roboczego. Kolory w kalendarzu **nie mają znaczenia biznesowego** — służą tylko do wizualnego odróżnienia rezerwacji różnych klientów (inspiracja: system rezerwacji sal prób, gdzie kolor = sala; tu kolor = klient).
+
+### 1. Nowa logika biznesowa — `service/SchedulingService.java` (nowy plik, nowy pakiet)
+Pierwsza właściwa warstwa serwisowa w projekcie (wcześniej cała logika była w kontrolerach).
+- `computeSpan(startDate, startTime, durationMinutes)` — licząc od podanego początku, "zużywa" czas trwania usługi minuta po minucie w obrębie okien pracy (08:00-16:00, pon-pt), przechodząc na kolejny dzień roboczy, gdy zabraknie czasu w bieżącym dniu. Rzuca błąd (400), jeśli start przypada na weekend albo poza godzinami pracy.
+- `findFreeStation(span, idDoWykluczenia)` — sprawdza po kolei stanowiska 1-6, czy któreś jest wolne przez cały wyliczony przedział czasu (ignorując rezerwacje odrzucone/anulowane); rzuca `NoAvailableStationException` (nowy plik, `service/NoAvailableStationException.java`), jeśli wszystkie 6 jest zajętych w tym terminie.
+- **`GlobalExceptionHandler.java`** — dodana obsługa `NoAvailableStationException` → HTTP 409 (Conflict) zamiast 500.
+
+### 2. Zmiana modelu danych — `model/Reservation.java`
+- Pole `serviceType` zmienione z wolnego tekstu (`String`) na relację `@ManyToOne` do encji `ServiceType` — dzięki temu system zna czas trwania (`durationMinutes`) wybranej usługi. **To zmiana łamiąca poprzedni format danych** — stare rezerwacje z tekstowym `serviceType` (np. `"PRZEGLAD"`) nie będą pasować do nowej kolumny relacyjnej. Ponieważ `ddl-auto=update` nie usuwa/migrowuje automatycznie starych kolumn, stara kolumna tekstowa zostanie osierocona w bazie, a nowa (`service_type_id`) będzie pusta dla starych wierszy — do wyczyszczenia ręcznie albo docelowo przez migrację Flyway (patrz sekcja "odłożone na później").
+- Dodano pola: `endDate`, `endTime` (realny, wyliczony koniec wizyty) oraz `stationNumber` (przydzielone stanowisko 1-6).
+
+### 3. Seed danych — `src/main/resources/data.sql` (nowy plik)
+Ponieważ `ServiceType` musi teraz mieć realne rekordy z czasem trwania (a wcześniej formularz miał te opcje wpisane na sztywno w HTML, nigdzie niepowiązane z bazą), dodano 5 domyślnych usług z przykładowymi czasami trwania: Przegląd (60 min), Naprawa (240 min), Diagnostyka (30 min), Montaż akcesoriów (120 min), Modyfikacja (2880 min = przykład usługi wielodniowej). Wstawki są idempotentne (`WHERE NOT EXISTS`) — nie duplikują się przy każdym restarcie.
+- **`application.properties`** — dodano `spring.sql.init.mode=always` i `spring.jpa.defer-datasource-initialization=true`, żeby `data.sql` uruchamiał się też na prawdziwej bazie Postgres (domyślnie Spring Boot robi to tylko dla baz wbudowanych typu H2), już po tym jak Hibernate utworzy/zaktualizuje tabele.
+
+### 4. Kontroler — `controller/ReservationApiController.java`
+- Nowa prywatna metoda `scheduleReservation()`, wywoływana przy tworzeniu (`POST`) i pełnej edycji (`PUT`) rezerwacji: pobiera pełny rekord `ServiceType` po ID, liczy `Span` przez `SchedulingService`, zapisuje `endDate`/`endTime`/`stationNumber` na rezerwacji. Brak wybranego typu usługi → błąd 400.
+- `GET /api/reservations/calendar/fullcalendar` — pokazuje teraz rezerwacje `PENDING` i `ACCEPTED` (nie tylko zaakceptowane), z prawdziwym, wyliczonym końcem wizyty (zamiast poprzedniego sztywnego "+1 godzina"), tytułem zawierającym numer stanowiska i imię/nazwisko klienta, oraz kolorem wyliczanym deterministycznie z e-maila klienta (funkcja `clientColor()`) — czysto wizualne rozróżnienie, bez znaczenia biznesowego.
+
+### 5. Bezpieczeństwo — `config/SecurityConfig.java`
+Dodano publiczny dostęp (bez logowania) do odczytu `GET /service-types` — klient musi zobaczyć listę usług w formularzu rezerwacji, zanim się zaloguje (a klient nigdy się nie loguje).
+
+### 6. Frontend
+- **`index.html`** — dropdown "Typ usługi" wypełniany dynamicznie z `/service-types` (zamiast 5 opcji wpisanych na sztywno w HTML), z widocznym czasem trwania przy każdej opcji. Po udanej rezerwacji komunikat pokazuje wyliczony termin odbioru i numer stanowiska. **Przy okazji naprawiony błąd**: formularz wysyłał pole `notes`, którego encja `Reservation` w ogóle nie miała (ma `clientNotes`) — notatki klienta nigdy się nie zapisywały; teraz wysyłane jest poprawne pole.
+- **`admin.html`** — pole "Typ usługi" w oknie edycji zmienione z dowolnego tekstu na dropdown pobierany z `/service-types` (spójny z formularzem klienta). Lista rezerwacji pokazuje teraz nazwę usługi, realny termin początku/końca wizyty oraz numer przydzielonego stanowiska.
+
+### 7. Usunięcie martwego kodu (potwierdzone jako niezwiązane z zamysłem projektu)
+- `Client.setFirstName(String s) {}` (pusta metoda) — usunięta.
+- Pusty konstruktor `ServiceType(String, double)` — usunięty. Dodano za to brakujący `setId()` do `ServiceType` (analogicznie do `Reservation`), potrzebny do testów.
+
+### 8. Nowe testy
+- **`service/SchedulingServiceTest.java`** (nowy plik) — 8 testów silnika planowania: wizyta mieszcząca się w jednym dniu, przenoszenie na kolejny dzień roboczy, pomijanie weekendu (piątek → poniedziałek), usługa wielodniowa, błędy przy starcie w weekend/poza godzinami pracy, przydział wolnego stanowiska i błąd przy wszystkich zajętych.
+- Zaktualizowano `ReservationApiControllerTest.java` pod nowy model (mock `ServiceTypeRepository` i `SchedulingService`), dodano test na brak wybranego typu usługi → 400.
+
+### Wciąż odłożone na później
+- Migracja starych danych `serviceType` (tekst → relacja) — obecnie tylko `ddl-auto=update`, bez czyszczenia starej kolumny.
+- Testy dla `ClientController`, `ServiceTypeController`, `ReservationCommentController`, `SecurityConfig`.
+- Panel admina nie ma jeszcze widoku "zajętości 6 stanowisk" w formie kalendarza (tylko lista + publiczny FullCalendar na stronie klienta).
+- Rotacja hasła do bazy na Railway (TODO, patrz wyżej).

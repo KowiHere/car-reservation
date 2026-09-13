@@ -24,10 +24,6 @@ public class ServiceType {
 
     // --- Konstruktory ---
 
-    public ServiceType(String naprawaBlacharska, double v) {
-        // Bezparametrowy konstruktor wymagany przez JPA
-    }
-
     public ServiceType(String name, String description, Integer durationMinutes, String category) {
         this.name = name;
         this.description = description;
@@ -43,6 +39,10 @@ public class ServiceType {
 
     public Long getId() {
         return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getName() {

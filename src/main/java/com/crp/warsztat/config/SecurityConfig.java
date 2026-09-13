@@ -46,6 +46,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/index.html", "/styles.css", "/favicon.ico").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reservations").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reservations/calendar/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/service-types", "/service-types/**").permitAll()
                         .anyRequest().hasRole("ADMIN")
                 )
                 .httpBasic(Customizer.withDefaults());

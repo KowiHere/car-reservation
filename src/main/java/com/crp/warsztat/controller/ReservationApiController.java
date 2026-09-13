@@ -3,10 +3,14 @@ package com.crp.warsztat.controller;
 import com.crp.warsztat.dto.ReservationCalendarDTO;
 import com.crp.warsztat.model.Reservation;
 import com.crp.warsztat.model.ReservationStatus;
+import com.crp.warsztat.model.ServiceType;
 import com.crp.warsztat.repository.ReservationRepository;
+import com.crp.warsztat.repository.ServiceTypeRepository;
+import com.crp.warsztat.service.SchedulingService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
@@ -17,9 +21,15 @@ import java.util.NoSuchElementException;
 public class ReservationApiController {
 
     private final ReservationRepository reservationRepository;
+    private final ServiceTypeRepository serviceTypeRepository;
+    private final SchedulingService schedulingService;
 
-    public ReservationApiController(ReservationRepository reservationRepository) {
+    public ReservationApiController(ReservationRepository reservationRepository,
+                                     ServiceTypeRepository serviceTypeRepository,
+                                     SchedulingService schedulingService) {
         this.reservationRepository = reservationRepository;
+        this.serviceTypeRepository = serviceTypeRepository;
+        this.schedulingService = schedulingService;
     }
 
     // GET /api/reservations
@@ -39,6 +49,7 @@ public class ReservationApiController {
     public Reservation createReservation(@Valid @RequestBody Reservation reservation) {
         reservation.setStatus(ReservationStatus.PENDING);
         reservation.setAdminNotes(""); // Domyślnie puste
+        scheduleReservation(reservation, null);
         return reservationRepository.save(reservation);
     }
 
@@ -69,6 +80,7 @@ public class ReservationApiController {
         reservation.setClientNotes(updated.getClientNotes());
         reservation.setAdminNotes(updated.getAdminNotes());
         reservation.setStatus(updated.getStatus());
+        scheduleReservation(reservation, id);
 
         return reservationRepository.save(reservation);
     }
@@ -95,21 +107,48 @@ public class ReservationApiController {
     }
 
     @GetMapping("/calendar/fullcalendar")
-    public List<Map<String, String>> getFullcalendarEvents() {
+    public List<Map<String, Object>> getFullcalendarEvents() {
         return reservationRepository.findAll().stream()
-                .filter(res -> res.getStatus() == ReservationStatus.ACCEPTED)
-                .map(res -> Map.of(
-                        "title", "Zajęte",
+                .filter(res -> res.getStatus() == ReservationStatus.PENDING || res.getStatus() == ReservationStatus.ACCEPTED)
+                .map(res -> Map.<String, Object>of(
+                        "title", "Stanowisko " + res.getStationNumber() + " – " + res.getFirstName() + " " + res.getLastName(),
                         "start", res.getVisitDate() + "T" + res.getVisitTime(),
-                        "end", res.getVisitDate() + "T" + endTime(res.getVisitTime()),
-                        "color", "#e95a3e"
+                        "end", res.getEndDate() + "T" + res.getEndTime(),
+                        "color", clientColor(res.getEmail())
                 ))
                 .toList();
     }
 
-    private String endTime(String startTime) {
-        LocalTime start = LocalTime.parse(startTime);
-        return start.plusHours(1).toString();
+    /**
+     * Deterministyczny kolor na podstawie e-maila klienta — kolory nie mają znaczenia
+     * biznesowego, służą tylko do wizualnego odróżnienia rezerwacji różnych klientów.
+     */
+    private String clientColor(String email) {
+        String[] palette = {"#e95a3e", "#3e8ee9", "#3ee9a0", "#e9c53e", "#a03ee9", "#e93ea0", "#3ee9df"};
+        int index = Math.abs((email == null ? "" : email).hashCode()) % palette.length;
+        return palette[index];
+    }
+
+    /**
+     * Wylicza realny koniec wizyty na podstawie czasu trwania wybranej usługi
+     * i godzin pracy warsztatu, a następnie przydziela wolne stanowisko.
+     */
+    private void scheduleReservation(Reservation reservation, Long reservationIdToExclude) {
+        if (reservation.getServiceType() == null || reservation.getServiceType().getId() == null) {
+            throw new IllegalArgumentException("Wybierz typ usługi");
+        }
+        ServiceType serviceType = serviceTypeRepository.findById(reservation.getServiceType().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Nieznany typ usługi"));
+        int durationMinutes = serviceType.getDurationMinutes() != null ? serviceType.getDurationMinutes() : 60;
+
+        LocalDate startDate = LocalDate.parse(reservation.getVisitDate());
+        LocalTime startTime = LocalTime.parse(reservation.getVisitTime());
+        SchedulingService.Span span = schedulingService.computeSpan(startDate, startTime, durationMinutes);
+
+        reservation.setServiceType(serviceType);
+        reservation.setEndDate(span.endDate().toString());
+        reservation.setEndTime(span.endTime().toString());
+        reservation.setStationNumber(schedulingService.findFreeStation(span, reservationIdToExclude));
     }
 
 }

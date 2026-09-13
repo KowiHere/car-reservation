@@ -26,14 +26,23 @@ public class Reservation {
     private String carBrand;
     private String carModel;
 
-    // --- Usługa (jeśli na razie tylko jeden typ na rezerwację) ---
-    private String serviceType;
+    // --- Usługa (określa m.in. czas trwania wizyty) ---
+    @ManyToOne
+    private ServiceType serviceType;
 
-    // --- Termin wizyty ---
+    // --- Termin wizyty (początek podawany przez klienta) ---
     @NotBlank(message = "Data wizyty jest wymagana")
     private String visitDate; // np. "2025-06-08"
     @NotBlank(message = "Godzina wizyty jest wymagana")
     private String visitTime; // np. "08:30"
+
+    // --- Realny koniec wizyty, wyliczony na podstawie czasu trwania usługi
+    //     i godzin pracy warsztatu (pon-pt 08:00-16:00) — patrz SchedulingService ---
+    private String endDate;
+    private String endTime;
+
+    // --- Przydzielone stanowisko (1..6) — warsztat ma 6 stanowisk/pracowników ---
+    private Integer stationNumber;
 
     // --- Dodatkowe informacje ---
     private String clientNotes;   // Notatka od klienta (z formularza)
@@ -69,14 +78,23 @@ public class Reservation {
     public String getCarModel() { return carModel; }
     public void setCarModel(String carModel) { this.carModel = carModel; }
 
-    public String getServiceType() { return serviceType; }
-    public void setServiceType(String serviceType) { this.serviceType = serviceType; }
+    public ServiceType getServiceType() { return serviceType; }
+    public void setServiceType(ServiceType serviceType) { this.serviceType = serviceType; }
 
     public String getVisitDate() { return visitDate; }
     public void setVisitDate(String visitDate) { this.visitDate = visitDate; }
 
     public String getVisitTime() { return visitTime; }
     public void setVisitTime(String visitTime) { this.visitTime = visitTime; }
+
+    public String getEndDate() { return endDate; }
+    public void setEndDate(String endDate) { this.endDate = endDate; }
+
+    public String getEndTime() { return endTime; }
+    public void setEndTime(String endTime) { this.endTime = endTime; }
+
+    public Integer getStationNumber() { return stationNumber; }
+    public void setStationNumber(Integer stationNumber) { this.stationNumber = stationNumber; }
 
     public String getClientNotes() { return clientNotes; }
     public void setClientNotes(String clientNotes) { this.clientNotes = clientNotes; }
