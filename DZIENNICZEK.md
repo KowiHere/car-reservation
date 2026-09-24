@@ -307,3 +307,25 @@ Nowy endpoint jest **tylko dla admina** (w przeciwieństwie do pozostałych `cal
 - Migracje bazy danych (Flyway/Liquibase), wyłączenie `ddl-auto=update` na produkcji.
 - Rotacja hasła do bazy na Railway (TODO, patrz wyżej).
 - Widok stanowisk pokazuje tylko tydzień naraz — dla usług wielodniowych/wielotygodniowych trzeba przełączać tygodnie strzałkami FullCalendar (brak jeszcze widoku miesięcznego/Gantt na dłuższe okresy).
+
+---
+
+## Etap: lokalne środowisko developerskie (Docker + Postgres), niezależne od Railway
+
+Dotąd jedyna skonfigurowana baza danych to produkcyjny Postgres na Railway — żeby cokolwiek uruchomić lokalnie i zobaczyć efekt zmian, trzeba było znać jego dane logowania. Ten etap dodaje lokalną bazę na dysku, żeby dalszy rozwój funkcjonalności nie wymagał żadnego logowania do usług trzecich.
+
+### 1. `docker-compose.yml` (nowy plik)
+Stawia lokalnego kontenera PostgreSQL 16 (`postgres:16-alpine`) z danymi trzymanymi w nazwanym wolumenie Dockera (`pgdata`) — czyli fizycznie na dysku, przetrwają restart kontenera. Domyślne dane logowania (`warsztat`/`warsztat_local_dev`) są celowo proste, bo to baza tylko do lokalnego dewelopmentu, nigdy nie wystawiona poza `localhost`.
+- **Nie mogłem tego przetestować end-to-end w tej sesji** — sprawdziłem tylko, że plik jest poprawny składniowo (`docker compose config`), bo demon Dockera nie działa w tym środowisku sandboxowym. Do zweryfikowania na Twojej maszynie.
+
+### 2. `.env.example` (nowy plik)
+Wzorcowy plik ze zmiennymi środowiskowymi (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`) pasującymi do wartości z `docker-compose.yml`. Kopiuje się go do `.env` (już w `.gitignore`, nigdy nie trafi do repo) i eksportuje przed uruchomieniem aplikacji.
+
+### 3. `SETUP.md` — rozbudowana instrukcja
+Dodana sekcja "Lokalna baza danych (Docker) — bez logowania do Railway": `docker compose up -d` → `cp .env.example .env` → `export $(grep -v '^#' .env | xargs)` → `./mvnw spring-boot:run`. Baza startuje pusta, Hibernate tworzy schemat (`ddl-auto=update`), `data.sql` wstawia domyślne typy usług — więc od razu można testować cały przepływ rezerwacji lokalnie. Baza na Railway zostaje całkowicie nietknięta.
+
+### Wciąż odłożone na później
+- Weryfikacja `docker-compose.yml` na prawdziwej maszynie z działającym Dockerem (nie sprawdzone w tej sesji — patrz wyżej).
+- Migracja starych danych `serviceType` na Railway (`MIGRACJA_DANYCH.md`, wymaga Twojej akcji).
+- Migracje bazy danych (Flyway/Liquibase), wyłączenie `ddl-auto=update` na produkcji.
+- Rotacja hasła do bazy na Railway (TODO, patrz wyżej).
