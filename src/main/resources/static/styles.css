@@ -65,6 +65,7 @@ button:hover {
 
 /* === Komunikaty === */
 .msg { margin: 12px 0; color: #ffe135; font-weight: bold; }
+.msg.error { color: #ff5c4d; }
 
 /* === FullCalendar === */
 #calendar {

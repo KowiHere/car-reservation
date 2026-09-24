@@ -36,10 +36,12 @@
         <select id="serviceType" required>
             <option value="">-- Wybierz --</option>
         </select>
-        <label for="visitDate">Data podstawienia pojazdu:</label>
+        <label for="visitDate">Data podstawienia pojazdu (pon-pt):</label>
         <input type="date" id="visitDate" required>
-        <label for="visitTime">Godzina podstawienia (pon-pt, 08:00-16:00):</label>
+        <div class="msg error" id="visitDateError" hidden>Warsztat nie pracuje w wybranym dniu (sobota/niedziela) — wybierz dzień od poniedziałku do piątku.</div>
+        <label for="visitTime">Godzina podstawienia (08:00-16:00):</label>
         <input type="time" id="visitTime" min="08:00" max="15:59" required>
+        <div class="msg error" id="visitTimeError" hidden>Godzina poza godzinami pracy warsztatu (08:00-16:00).</div>
         <label for="notes">Notatka (opcjonalnie):</label>
         <textarea id="notes" name="notes" rows="5" style="resize:vertical;"></textarea>
         <div class="msg" id="msg"></div>
@@ -77,9 +79,46 @@
 
     loadServiceTypes();
 
+    // Walidacja godzin pracy warsztatu (pon-pt 08:00-16:00) po stronie frontendu —
+    // żeby błąd był widoczny natychmiast, zanim formularz trafi do backendu.
+    function isWeekendDate(dateStr) {
+        if (!dateStr) return false;
+        const day = new Date(dateStr + 'T00:00:00').getDay(); // 0 = niedziela, 6 = sobota
+        return day === 0 || day === 6;
+    }
+
+    function isOutsideWorkingHours(timeStr) {
+        if (!timeStr) return false;
+        return timeStr < '08:00' || timeStr >= '16:00';
+    }
+
+    function validateVisitDate() {
+        const invalid = isWeekendDate(visitDate.value);
+        document.getElementById('visitDateError').hidden = !invalid;
+        return !invalid;
+    }
+
+    function validateVisitTime() {
+        const invalid = isOutsideWorkingHours(visitTime.value);
+        document.getElementById('visitTimeError').hidden = !invalid;
+        return !invalid;
+    }
+
+    visitDate.addEventListener('change', validateVisitDate);
+    visitTime.addEventListener('change', validateVisitTime);
+
     // Obsługa wysyłki formularza (AJAX, bez przeładowania strony)
     document.getElementById('rezerwacjaForm').onsubmit = async function (e) {
         e.preventDefault();
+
+        const dateOk = validateVisitDate();
+        const timeOk = validateVisitTime();
+        if (!dateOk || !timeOk) {
+            document.getElementById('msg').textContent = 'Popraw zaznaczone pola przed wysłaniem.';
+            document.getElementById('msg').classList.add('error');
+            return;
+        }
+
         const res = await fetch('/api/reservations', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -102,6 +141,8 @@
                 `Rezerwacja wysłana! Przewidywany odbiór: ${created.endDate} ${created.endTime} (stanowisko ${created.stationNumber}).`;
             document.getElementById('msg').classList.remove('error');
             rezerwacjaForm.reset();
+            document.getElementById('visitDateError').hidden = true;
+            document.getElementById('visitTimeError').hidden = true;
         } else {
             const error = await res.text();
             document.getElementById('msg').textContent = "Błąd: " + error;
@@ -120,9 +161,12 @@
             locale: 'pl',
             selectable: true,
             firstDay: 1, // Poniedziałek jako pierwszy dzień tygodnia
+            weekends: false, // Warsztat pracuje tylko pon-pt
             select: function(info) {
                 document.getElementById('visitDate').value = info.startStr.slice(0,10);
                 document.getElementById('visitTime').value = info.startStr.slice(11,16);
+                validateVisitDate();
+                validateVisitTime();
             },
             events: '/api/reservations/calendar/fullcalendar',
             height: 'auto',

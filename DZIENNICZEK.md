@@ -329,3 +329,35 @@ Dodana sekcja "Lokalna baza danych (Docker) — bez logowania do Railway": `dock
 - Migracja starych danych `serviceType` na Railway (`MIGRACJA_DANYCH.md`, wymaga Twojej akcji).
 - Migracje bazy danych (Flyway/Liquibase), wyłączenie `ddl-auto=update` na produkcji.
 - Rotacja hasła do bazy na Railway (TODO, patrz wyżej).
+
+---
+
+## Etap: walidacja godzin pracy po stronie frontendu (formularz klienta)
+
+Dotąd błędny termin (weekend albo godzina poza 08:00-16:00) wykrywał tylko backend (`SchedulingService`, HTTP 400) — klient dowiadywał się o błędzie dopiero po wysłaniu formularza. Ten etap dodaje wykrywanie tego samego problemu od razu w przeglądarce, zanim dojdzie do wysyłki.
+
+### 1. `src/main/resources/static/index.html`
+- Dodano dwa nowe komunikaty błędów pod polami daty i godziny (`#visitDateError`, `#visitTimeError`), domyślnie skryte (`hidden`).
+- Nowe funkcje JS: `isWeekendDate()` (sprawdza dzień tygodnia daty) i `isOutsideWorkingHours()` (sprawdza, czy godzina jest poza 08:00-16:00) oraz `validateVisitDate()`/`validateVisitTime()`, które pokazują/chowają odpowiedni komunikat i zwracają `true`/`false`.
+- Walidacja odpala się przy zmianie pola (`change`) **i** ponownie przy próbie wysyłki formularza — jeśli którykolwiek warunek nie jest spełniony, `fetch('/api/reservations', ...)` **nie jest wywoływany w ogóle**, tylko wyświetla się komunikat "Popraw zaznaczone pola przed wysłaniem."
+- FullCalendar po stronie klienta dostał `weekends: false` — soboty i niedziele nie są już nawet wyświetlane w siatce kalendarza, więc nie da się ich kliknąć.
+- Kliknięcie w kalendarzu (funkcja `select`) też odpala walidację, na wypadek gdyby mimo to wybrano nieprawidłowy zakres.
+
+### 2. `src/main/resources/static/styles.css`
+Naprawiono brakujący styl klasy `.msg.error` (linia 68) — **wcześniej w całym projekcie nie istniał żaden wizualny styl dla błędów**, mimo że JS od dawna dodawał klasę `error` do komunikatów (np. przy nieudanym zapisie). Komunikaty błędów wyglądały identycznie jak komunikaty sukcesu (żółty tekst). Teraz błędy są czerwone.
+
+### 3. Weryfikacja (Playwright, headless Chromium)
+Ponieważ w tej sesji nie ma dostępu do internetu (biblioteka FullCalendar z CDN i wywołania do żywego backendu nie działają), przetestowano samą logikę JS bezpośrednio na pliku `index.html` (`file://`), z przechwyceniem sieciowego `fetch` do `/api/reservations`, żeby potwierdzić, że nie jest wywoływany przy błędnych danych:
+- poniedziałek 09:00 → brak błędów (poprawnie),
+- sobota → błąd daty (poprawnie),
+- poniedziałek 18:00 → błąd godziny (poprawnie, częściowo też blokowane natywnie przez atrybut `max` na polu `time`),
+- próba wysyłki z sobotą jako datą (najważniejszy test, bo HTML5 nie ma natywnej blokady dnia tygodnia — to jedyna linia obrony) → formularz pokazał komunikat błędu, **`fetch` do `/api/reservations` nie został wywołany**.
+- **Nie przetestowano** pełnego przepływu z żywym backendem (Spring Boot + baza) w tej sesji z powodu braku internetu do pobrania zależności/CDN — do potwierdzenia przy pierwszym localnym uruchomieniu (patrz `SETUP.md`).
+
+### Stan testów po tym etapie
+Testy jednostkowe/integracyjne Java (41) niezmienione — ten etap dotyczył wyłącznie JS/HTML/CSS, bez zmian w backendzie.
+
+### Wciąż odłożone na później
+- Migracje bazy danych (Flyway/Liquibase), wyłączenie `ddl-auto=update` na produkcji.
+- Rotacja hasła do bazy na Railway i migracja starych danych `serviceType` (TODO, patrz wyżej).
+- Analogiczna walidacja godzin pracy w oknie edycji rezerwacji w panelu admina (obecnie tylko backend to sprawdza).
