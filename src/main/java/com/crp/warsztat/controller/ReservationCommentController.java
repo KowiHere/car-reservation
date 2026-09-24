@@ -5,7 +5,7 @@ import com.crp.warsztat.repository.ReservationCommentRepository;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.NoSuchElementException;
 
 /**
  * Kontroler do obsługi komentarzy do rezerwacji.
@@ -29,8 +29,8 @@ public class ReservationCommentController {
 
     // Pobierz jeden komentarz po ID (GET /reservation-comments/{id})
     @GetMapping("/{id}")
-    public Optional<ReservationComment> getCommentById(@PathVariable Long id) {
-        return reservationCommentRepository.findById(id);
+    public ReservationComment getCommentById(@PathVariable Long id) {
+        return reservationCommentRepository.findById(id).orElseThrow();
     }
 
     // Pobierz wszystkie komentarze dla danej rezerwacji (GET /reservation-comments/by-reservation/{reservationId})
@@ -48,6 +48,9 @@ public class ReservationCommentController {
     // Usuń komentarz (DELETE /reservation-comments/{id})
     @DeleteMapping("/{id}")
     public void deleteComment(@PathVariable Long id) {
+        if (!reservationCommentRepository.existsById(id)) {
+            throw new NoSuchElementException("Komentarz o id " + id + " nie istnieje");
+        }
         reservationCommentRepository.deleteById(id);
     }
 }

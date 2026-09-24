@@ -75,7 +75,4 @@ public class Client {
     public void setInternalNotes(String internalNotes) {
         this.internalNotes = internalNotes;
     }
-
-    public void setFirstName(String s) {
-    }
 }

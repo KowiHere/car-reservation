@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title>Panel Admina – Rezerwacje Warsztat</title>
     <link href="styles.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
         .modal-bg {
             position: fixed;
@@ -37,6 +39,29 @@
             cursor: pointer;
         }
         .reservation-buttons button { margin-right: 7px;}
+        .stations-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .stations-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: bold;
+        }
+        .stations-legend .swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+        #stationsCalendar {
+            background: #181818;
+            border-radius: 10px;
+            margin-bottom: 32px;
+        }
     </style>
 </head>
 <body>
@@ -60,6 +85,12 @@
     </select>
     <button onclick="fetchReservations()">Odśwież</button>
 </div>
+
+<h2>Zajętość stanowisk</h2>
+<div class="stations-legend" id="stationsLegend"></div>
+<div id="stationsCalendar"></div>
+
+<h2>Lista rezerwacji</h2>
 <div class="msg" id="msg"></div>
 <ul id="reservationList"></ul>
 
@@ -76,9 +107,11 @@
             <label>Telefon: <input type="text" id="editPhoneNumber"></label><br>
             <label>Marka pojazdu: <input type="text" id="editCarBrand"></label><br>
             <label>Model pojazdu: <input type="text" id="editCarModel"></label><br>
-            <label>Typ usługi: <input type="text" id="editServiceType"></label><br>
+            <label>Typ usługi: <select id="editServiceType"></select></label><br>
             <label>Data wizyty: <input type="date" id="editVisitDate"></label><br>
-            <label>Godzina wizyty: <input type="time" id="editVisitTime"></label><br>
+            <div class="msg error" id="editVisitDateError" hidden>Warsztat nie pracuje w wybranym dniu (sobota/niedziela).</div>
+            <label>Godzina wizyty: <input type="time" id="editVisitTime" min="08:00" max="15:59"></label><br>
+            <div class="msg error" id="editVisitTimeError" hidden>Godzina poza godzinami pracy warsztatu (08:00-16:00).</div>
             <label>Notatka klienta: <textarea id="editClientNotes" rows="2"></textarea></label><br>
             <label>Notatka admina: <textarea id="editAdminNotes" rows="2"></textarea></label><br>
             <label>Status:
@@ -97,6 +130,79 @@
 <script>
     let reservationsCache = [];
 
+    // Zabezpiecza tekst przed wstrzyknięciem HTML/JS przy wstawianiu do innerHTML
+    function escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = value ?? '';
+        return div.innerHTML;
+    }
+
+    // Wczytanie typów usług do selecta w oknie edycji
+    async function loadServiceTypesIntoEditSelect() {
+        const res = await fetch('/service-types');
+        if (!res.ok) return;
+        const types = await res.json();
+        const select = document.getElementById('editServiceType');
+        select.innerHTML = types.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+    }
+    loadServiceTypesIntoEditSelect();
+
+    // Ten sam kolor na stanowisko, co po stronie backendu (ReservationApiController.stationColor) —
+    // czysto wizualne odróżnienie stanowisk 1-6 na siatce, bez znaczenia biznesowego.
+    const STATION_PALETTE = ["#e95a3e", "#3e8ee9", "#3ee9a0", "#e9c53e", "#a03ee9", "#4ecdc4"];
+    const STATION_COUNT = 6;
+
+    function renderStationsLegend() {
+        document.getElementById('stationsLegend').innerHTML = Array.from({length: STATION_COUNT}, (_, i) =>
+            `<span><span class="swatch" style="background:${STATION_PALETTE[i]}"></span>Stanowisko ${i + 1}</span>`
+        ).join('');
+    }
+    renderStationsLegend();
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const calendarEl = document.getElementById('stationsCalendar');
+        const stationsCalendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'timeGridWeek',
+            slotMinTime: '08:00:00',
+            slotMaxTime: '16:00:00',
+            allDaySlot: false,
+            locale: 'pl',
+            firstDay: 1,
+            events: '/api/reservations/calendar/stations',
+            height: 'auto',
+            contentHeight: 'auto'
+        });
+        stationsCalendar.render();
+    });
+
+    // Walidacja godzin pracy warsztatu (pon-pt 08:00-16:00) w oknie edycji —
+    // ta sama logika co w index.html (formularz klienta), tylko dla pól edycji admina.
+    function isWeekendDate(dateStr) {
+        if (!dateStr) return false;
+        const day = new Date(dateStr + 'T00:00:00').getDay(); // 0 = niedziela, 6 = sobota
+        return day === 0 || day === 6;
+    }
+
+    function isOutsideWorkingHours(timeStr) {
+        if (!timeStr) return false;
+        return timeStr < '08:00' || timeStr >= '16:00';
+    }
+
+    function validateEditVisitDate() {
+        const invalid = isWeekendDate(document.getElementById('editVisitDate').value);
+        document.getElementById('editVisitDateError').hidden = !invalid;
+        return !invalid;
+    }
+
+    function validateEditVisitTime() {
+        const invalid = isOutsideWorkingHours(document.getElementById('editVisitTime').value);
+        document.getElementById('editVisitTimeError').hidden = !invalid;
+        return !invalid;
+    }
+
+    document.getElementById('editVisitDate').addEventListener('change', validateEditVisitDate);
+    document.getElementById('editVisitTime').addEventListener('change', validateEditVisitTime);
+
     // MODAL obsługa
     function openModal(reservation) {
         document.getElementById('modal-bg').classList.add('active');
@@ -107,12 +213,14 @@
         document.getElementById('editPhoneNumber').value = reservation.phoneNumber || '';
         document.getElementById('editCarBrand').value = reservation.carBrand || '';
         document.getElementById('editCarModel').value = reservation.carModel || '';
-        document.getElementById('editServiceType').value = reservation.serviceType || '';
+        document.getElementById('editServiceType').value = reservation.serviceType ? reservation.serviceType.id : '';
         document.getElementById('editVisitDate').value = reservation.visitDate || '';
         document.getElementById('editVisitTime').value = reservation.visitTime || '';
         document.getElementById('editClientNotes').value = reservation.clientNotes || '';
         document.getElementById('editAdminNotes').value = reservation.adminNotes || '';
         document.getElementById('editStatus').value = reservation.status || 'PENDING';
+        document.getElementById('editVisitDateError').hidden = true;
+        document.getElementById('editVisitTimeError').hidden = true;
     }
     function closeModal() {
         document.getElementById('modal-bg').classList.remove('active');
@@ -124,6 +232,15 @@
     // FORM obsługa edycji
     document.getElementById('editForm').onsubmit = async function(e) {
         e.preventDefault();
+
+        const dateOk = validateEditVisitDate();
+        const timeOk = validateEditVisitTime();
+        if (!dateOk || !timeOk) {
+            document.getElementById('msg').textContent = 'Popraw zaznaczone pola przed zapisem.';
+            document.getElementById('msg').classList.add('error');
+            return;
+        }
+
         const id = document.getElementById('editId').value;
         const payload = {
             firstName: document.getElementById('editFirstName').value,
@@ -132,7 +249,7 @@
             phoneNumber: document.getElementById('editPhoneNumber').value,
             carBrand: document.getElementById('editCarBrand').value,
             carModel: document.getElementById('editCarModel').value,
-            serviceType: document.getElementById('editServiceType').value,
+            serviceType: {id: Number(document.getElementById('editServiceType').value)},
             visitDate: document.getElementById('editVisitDate').value,
             visitTime: document.getElementById('editVisitTime').value,
             clientNotes: document.getElementById('editClientNotes').value,
@@ -146,10 +263,13 @@
         });
         if(res.ok) {
             document.getElementById('msg').textContent = 'Zaktualizowano rezerwację!';
+            document.getElementById('msg').classList.remove('error');
             closeModal();
             fetchReservations();
         } else {
-            document.getElementById('msg').textContent = 'Błąd aktualizacji rezerwacji!';
+            const error = await res.text();
+            document.getElementById('msg').textContent = 'Błąd aktualizacji rezerwacji: ' + error;
+            document.getElementById('msg').classList.add('error');
         }
     };
 
@@ -178,15 +298,16 @@
         }
         reservationList.innerHTML = filtered.map(r =>
             `<li>
-      <b>${r.firstName || '(brak imienia)'} ${r.lastName || '(brak nazwiska)'}</b>
-      (${r.email || '-'}, ${r.phoneNumber || '-'}) --- Status: <b>${r.status}</b>
-      <br>Pojazd: ${r.carBrand || '-'} ${r.carModel || '-'}
-      <br>Usługa: ${r.serviceType || '-'}
-      <br>Notatka klienta: ${r.clientNotes || '-'}
-      <br>Notatka admina: ${r.adminNotes || '-'}
+      <b>${escapeHtml(r.firstName) || '(brak imienia)'} ${escapeHtml(r.lastName) || '(brak nazwiska)'}</b>
+      (${escapeHtml(r.email) || '-'}, ${escapeHtml(r.phoneNumber) || '-'}) --- Status: <b>${escapeHtml(r.status)}</b>
+      <br>Pojazd: ${escapeHtml(r.carBrand) || '-'} ${escapeHtml(r.carModel) || '-'}
+      <br>Usługa: ${r.serviceType ? escapeHtml(r.serviceType.name) : '-'}
+      <br>Termin: ${escapeHtml(r.visitDate)} ${escapeHtml(r.visitTime)} &rarr; ${escapeHtml(r.endDate) || '?'} ${escapeHtml(r.endTime) || '?'} (stanowisko ${r.stationNumber ?? '?'})
+      <br>Notatka klienta: ${escapeHtml(r.clientNotes) || '-'}
+      <br>Notatka admina: ${escapeHtml(r.adminNotes) || '-'}
       <div class="reservation-buttons">
         <button onclick="deleteReservation(${r.id})">Usuń</button>
-        <button onclick='openModal(${JSON.stringify(r)})'>Edytuj</button>
+        <button onclick='openModal(${JSON.stringify(r).replace(/'/g, "&#39;")})'>Edytuj</button>
         ${
                 r.status === "PENDING"
                     ? `<button onclick="changeStatus(${r.id}, 'ACCEPTED')">Akceptuj</button>

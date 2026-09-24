@@ -5,7 +5,7 @@ import com.crp.warsztat.repository.ClientRepository;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.NoSuchElementException;
 
 /**
  * Kontroler do obsługi klientów (Client).
@@ -27,8 +27,8 @@ public class ClientController {
     }
 
     @GetMapping("/{id}")
-    public Optional<Client> getClientById(@PathVariable Long id) {
-        return clientRepository.findById(id);
+    public Client getClientById(@PathVariable Long id) {
+        return clientRepository.findById(id).orElseThrow();
     }
 
     @PostMapping
@@ -38,6 +38,9 @@ public class ClientController {
 
     @DeleteMapping("/{id}")
     public void deleteClient(@PathVariable Long id) {
+        if (!clientRepository.existsById(id)) {
+            throw new NoSuchElementException("Klient o id " + id + " nie istnieje");
+        }
         clientRepository.deleteById(id);
     }
 }
