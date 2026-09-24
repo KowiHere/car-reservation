@@ -360,4 +360,26 @@ Testy jednostkowe/integracyjne Java (41) niezmienione — ten etap dotyczył wy�
 ### Wciąż odłożone na później
 - Migracje bazy danych (Flyway/Liquibase), wyłączenie `ddl-auto=update` na produkcji.
 - Rotacja hasła do bazy na Railway i migracja starych danych `serviceType` (TODO, patrz wyżej).
-- Analogiczna walidacja godzin pracy w oknie edycji rezerwacji w panelu admina (obecnie tylko backend to sprawdza).
+
+---
+
+## Etap: walidacja godzin pracy w oknie edycji panelu admina
+
+Dokończenie poprzedniego etapu — ta sama walidacja (dzień pon-pt, godzina 08:00-16:00), która chroni formularz klienta, teraz działa też w oknie edycji rezerwacji w panelu admina (dotąd tylko backend to sprawdzał).
+
+### `src/main/resources/static/admin.html`
+- Dodano dwa komunikaty błędów (`#editVisitDateError`, `#editVisitTimeError`) pod odpowiednimi polami okna edycji, oraz atrybuty `min`/`max` na polu godziny (`editVisitTime`), analogicznie do `index.html`.
+- Zduplikowano (zgodnie z istniejącym wzorcem w projekcie — obie strony HTML są niezależne, bez wspólnego pliku JS) funkcje `isWeekendDate()`, `isOutsideWorkingHours()` oraz `validateEditVisitDate()`/`validateEditVisitTime()`.
+- Walidacja odpala się przy zmianie pola i przy próbie zapisu (`editForm.onsubmit`) — błędny termin blokuje wysyłkę `PUT /api/reservations/{id}` tak samo, jak blokuje `POST` w formularzu klienta.
+- `openModal()` czyści widoczność błędów przy otwarciu okna dla nowej rezerwacji (żeby nie zostały widoczne z poprzedniej edycji).
+- Przy okazji naprawiono drobny błąd: komunikat sukcesu po zapisie nie usuwał wcześniej klasy `error` z `#msg` (mogła zostać czerwona nawet po udanym zapisie), a komunikat błędu z backendu nie pokazywał treści odpowiedzi (teraz pokazuje, tak jak w `index.html`).
+
+### Weryfikacja (Playwright, headless Chromium)
+Test na pliku `admin.html` (`file://`), z wywołaniem `window.openModal()` z przykładową rezerwacją i przechwyceniem `fetch` do `/api/reservations/**`: poniedziałek 09:00 → brak błędów; zmiana na sobotę → błąd daty; próba zapisu z sobotą → komunikat błędu, **`PUT` nie został wywołany**. Zachowanie identyczne jak w `index.html`.
+
+### Stan testów po tym etapie
+41 testów Java, niezmienione (etap dotyczył wyłącznie JS/HTML).
+
+### Wciąż odłożone na później
+- Migracje bazy danych (Flyway/Liquibase), wyłączenie `ddl-auto=update` na produkcji — odłożone celowo, niezależne od tego, czy baza jest lokalna czy zdalna (Flyway to wersjonowanie schematu, nie hosting bazy).
+- Rotacja hasła do bazy na Railway i migracja starych danych `serviceType` (TODO, patrz wyżej).
